@@ -1,0 +1,2860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PathoCare Pro - Lab Billing System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#f0f4f8; color:#2d3748; }
+
+/* LOGIN */
+#login-screen {
+  position:fixed; inset:0; background:linear-gradient(135deg,#1a365d 0%,#2b6cb0 50%,#63b3ed 100%);
+  display:flex; align-items:center; justify-content:center; z-index:9999;
+}
+.login-box {
+  background:white; border-radius:20px; padding:40px; width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3); text-align:center;
+}
+.login-logo { font-size:50px; margin-bottom:10px; }
+.login-box h2 { color:#1a365d; font-size:22px; margin-bottom:5px; }
+.login-box p { color:#718096; font-size:13px; margin-bottom:25px; }
+.login-field { margin-bottom:15px; text-align:left; }
+.login-field label { font-size:12px; font-weight:600; color:#4a5568; display:block; margin-bottom:6px; }
+.login-field input {
+  width:100%; padding:11px 14px; border:1.5px solid #e2e8f0;
+  border-radius:10px; font-size:14px; transition:border-color 0.2s;
+}
+.login-field input:focus { outline:none; border-color:#3182ce; }
+.login-btn {
+  width:100%; padding:12px; background:linear-gradient(135deg,#2b6cb0,#3182ce);
+  color:white; border:none; border-radius:10px; font-size:15px;
+  font-weight:700; cursor:pointer; margin-top:5px; transition:opacity 0.2s;
+}
+.login-btn:hover { opacity:0.9; }
+.login-error { color:#e53e3e; font-size:13px; margin-top:10px; display:none; }
+.login-hint { color:#a0aec0; font-size:11px; margin-top:15px; }
+.login-support { color:#4a5568; font-size:11px; margin-top:12px; line-height:1.6; border-top:1px solid #edf2f7; padding-top:10px; }
+
+/* SIDEBAR */
+.sidebar {
+  position:fixed; left:0; top:0; width:240px; height:100vh;
+  background:linear-gradient(180deg,#1a365d 0%,#2b6cb0 100%);
+  color:white; display:flex; flex-direction:column; z-index:100;
+  transform:translateX(0); transition:transform 0.3s;
+}
+.sidebar.hidden { transform:translateX(-240px); }
+.logo { padding:18px 20px; background:rgba(0,0,0,0.25); }
+.logo h2 { font-size:17px; font-weight:700; color:#63b3ed; }
+.logo p { font-size:11px; color:#a0aec0; margin-top:2px; }
+.nav { padding:15px 0; flex:1; overflow-y:auto; }
+.nav-section { padding:8px 20px 4px; font-size:10px; color:#a0aec0; text-transform:uppercase; letter-spacing:1px; }
+.nav-item {
+  display:flex; align-items:center; gap:12px; padding:11px 20px;
+  cursor:pointer; transition:all 0.2s; font-size:13px;
+  border-left:3px solid transparent;
+}
+.nav-item:hover,.nav-item.active { background:rgba(255,255,255,0.1); border-left-color:#63b3ed; color:#bee3f8; }
+.nav-item .icon { font-size:16px; width:22px; text-align:center; }
+.nav-footer { padding:15px 20px; border-top:1px solid rgba(255,255,255,0.1); }
+.logout-btn {
+  width:100%; padding:9px; background:rgba(229,62,62,0.2); color:#feb2b2;
+  border:1px solid rgba(229,62,62,0.3); border-radius:8px; cursor:pointer;
+  font-size:13px; font-weight:600;
+}
+.logout-btn:hover { background:rgba(229,62,62,0.35); }
+
+/* MAIN */
+.main { margin-left:240px; min-height:100vh; }
+.topbar {
+  background:white; padding:13px 25px; display:flex; justify-content:space-between;
+  align-items:center; box-shadow:0 1px 3px rgba(0,0,0,0.1); position:sticky; top:0; z-index:50;
+}
+.topbar h1 { font-size:18px; font-weight:600; color:#1a365d; }
+.topbar-right { display:flex; gap:12px; align-items:center; }
+.date-time { font-size:12px; color:#718096; }
+.user-badge { background:#ebf8ff; color:#2b6cb0; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.menu-toggle { display:none; background:none; border:none; font-size:22px; cursor:pointer; }
+
+.content { padding:20px 25px; }
+.page { display:none; }
+.page.active { display:block; }
+
+/* STATS */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:15px; margin-bottom:20px; }
+.stat-card {
+  background:white; border-radius:12px; padding:18px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.06); border-left:4px solid;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.stat-card.blue{border-color:#3182ce} .stat-card.green{border-color:#38a169}
+.stat-card.orange{border-color:#dd6b20} .stat-card.purple{border-color:#805ad5}
+.stat-card.red{border-color:#e53e3e} .stat-card.teal{border-color:#319795}
+.stat-number { font-size:26px; font-weight:700; color:#1a202c; }
+.stat-label { font-size:11px; color:#718096; margin-top:3px; }
+.stat-icon { font-size:32px; opacity:0.12; }
+
+/* CARDS */
+.card { background:white; border-radius:12px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:18px; }
+.card-title { font-size:15px; font-weight:600; color:#1a365d; margin-bottom:18px; padding-bottom:10px; border-bottom:2px solid #ebf8ff; display:flex; align-items:center; gap:8px; }
+
+/* FORMS */
+.form-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:13px; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-group label { font-size:11px; font-weight:600; color:#4a5568; text-transform:uppercase; letter-spacing:0.5px; }
+.form-group input,.form-group select,.form-group textarea {
+  padding:8px 11px; border:1.5px solid #e2e8f0; border-radius:8px;
+  font-size:13px; transition:border-color 0.2s; background:#f8fafc;
+}
+.form-group input:focus,.form-group select:focus { outline:none; border-color:#3182ce; background:white; }
+.form-full { grid-column:1/-1; } .form-2 { grid-column:span 2; }
+
+/* BUTTONS */
+.btn { padding:8px 18px; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; transition:all 0.2s; }
+.btn-primary{background:#3182ce;color:white} .btn-primary:hover{background:#2b6cb0}
+.btn-success{background:#38a169;color:white} .btn-success:hover{background:#2f855a}
+.btn-danger{background:#e53e3e;color:white} .btn-danger:hover{background:#c53030}
+.btn-warning{background:#dd6b20;color:white} .btn-warning:hover{background:#c05621}
+.btn-purple{background:#805ad5;color:white} .btn-purple:hover{background:#6b46c1}
+.btn-teal{background:#319795;color:white} .btn-teal:hover{background:#2c7a7b}
+.btn-outline{background:white;border:1.5px solid #3182ce;color:#3182ce}
+.btn-outline:hover{background:#ebf8ff}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-group{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:#ebf8ff;color:#2b6cb0;padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.5px}
+tbody tr{border-bottom:1px solid #f0f4f8;transition:background 0.15s}
+tbody tr:hover{background:#f7fafc}
+tbody td{padding:9px 12px}
+
+/* BADGE */
+.badge{padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-success{background:#c6f6d5;color:#276749} .badge-warning{background:#feebc8;color:#7b341e}
+.badge-danger{background:#fed7d7;color:#9b2c2c} .badge-info{background:#bee3f8;color:#2c5282}
+.badge-purple{background:#e9d8fd;color:#553c9a}
+
+/* BILL TESTS */
+.test-row{display:grid;grid-template-columns:2fr 1fr 80px 80px 80px 80px 40px;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f4f8;font-size:13px}
+.test-header{font-weight:600;color:#4a5568;font-size:11px;text-transform:uppercase}
+
+/* RESULT ENTRY */
+.res-row{display:grid;grid-template-columns:2fr 1.1fr 0.7fr 1.3fr 66px 34px;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #f0f4f8}
+.res-row.abnormal{background:#fff5f5;border-radius:6px;padding-left:6px;border-left:3px solid #e53e3e}
+.flag{font-size:10px;font-weight:700;text-align:center;padding:2px 5px;border-radius:5px;display:inline-block;width:100%}
+.flag-normal{background:#c6f6d5;color:#276749}
+.flag-high{background:#fed7d7;color:#9b2c2c}
+.flag-low{background:#bee3f8;color:#2c5282}
+.flag-abn{background:#fed7d7;color:#9b2c2c}
+
+/* ONLINE BOOKING */
+#booking-screen{display:none;position:fixed;inset:0;background:rgba(26,54,93,0.85);z-index:10000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px}
+.bk-box{background:#fff;border-radius:16px;width:100%;max-width:1000px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);margin:auto}
+.bk-head{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
+.bk-head-left{display:flex;align-items:center;gap:12px}
+.bk-labname{font-size:18px;font-weight:800;text-transform:uppercase}
+.bk-tagline{font-size:12px;opacity:.85}
+.bk-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px}
+.bk-body{display:grid;grid-template-columns:1fr 1fr;gap:22px;padding:22px}
+.bk-body h3{font-size:14px;color:#1a365d;margin-bottom:12px}
+.bk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bk-grid input,.bk-grid select{padding:9px 11px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;width:100%}
+.bk-grid input:focus,.bk-grid select:focus{outline:none;border-color:#3182ce;background:#fff}
+.bk-full{grid-column:1/-1}
+#bk-test-search{width:100%;padding:9px 11px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;margin-bottom:10px}
+.bk-testlist{max-height:300px;overflow-y:auto;border:1px solid #edf2f7;border-radius:10px;padding:6px}
+.bk-test{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.bk-test:hover{background:#f7fafc}
+.bk-test.sel{background:#ebf8ff}
+.bk-test input{width:16px;height:16px;flex:none}
+.bk-test .bk-tinfo{flex:1;display:flex;flex-direction:column}
+.bk-test small{color:#718096;font-size:11px}
+.bk-price{font-weight:700;color:#2b6cb0}
+.bk-total{text-align:right;margin-top:10px;font-size:15px;color:#1a365d}
+.bk-actions{padding:0 22px 14px;display:flex;gap:10px;flex-wrap:wrap}
+.bk-support{border-top:1px solid #edf2f7;padding:14px 22px;background:#f8fafc;font-size:12px;color:#4a5568;text-align:center;line-height:1.6}
+@media(max-width:768px){.bk-body{grid-template-columns:1fr}}
+
+/* TRACK BOOKING */
+#track-screen{display:none;position:fixed;inset:0;background:rgba(26,54,93,0.85);z-index:10001;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px}
+.trk-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:14px}
+.trk-row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed #e2e8f0;font-size:13px}
+.trk-row:last-child{border-bottom:none}
+.trk-row .k{color:#718096}
+.trk-row .v{font-weight:600;color:#1a202c;text-align:right}
+.trk-steps{display:flex;justify-content:space-between;margin:18px 0 6px}
+.trk-step{flex:1;text-align:center;font-size:11px;color:#a0aec0;position:relative}
+.trk-step .dot{width:28px;height:28px;border-radius:50%;background:#e2e8f0;color:#718096;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-weight:700;font-size:13px}
+.trk-step.done .dot{background:#38a169;color:#fff}
+.trk-step.done{color:#2f855a;font-weight:700}
+.trk-step.cancel .dot{background:#e53e3e;color:#fff}
+.trk-step.cancel{color:#c53030;font-weight:700}
+.trk-alert{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:10px}
+.trk-alert.ok{background:#f0fff4;color:#276749;border:1px solid #c6f6d5}
+.trk-alert.warn{background:#fffaf0;color:#7b341e;border:1px solid #feebc8}
+.trk-alert.err{background:#fff5f5;color:#9b2c2c;border:1px solid #fed7d7}
+
+/* REPORT STATUS / SIGNATURE */
+.status-badge{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;display:inline-block}
+.status-draft{background:#feebc8;color:#7b341e} .status-verified{background:#c6f6d5;color:#276749} .status-printed{background:#bee3f8;color:#2c5282} .status-cancelled{background:#fed7d7;color:#9b2c2c}
+.bk-slip-title{text-align:center;font-size:15px;font-weight:800;color:#1a202c;margin:12px 0 6px;letter-spacing:1.2px}
+.bk-detail{width:100%;border-collapse:collapse;margin:8px 0 12px}
+.bk-detail td{border:1px solid #e2e8f0;padding:6px 9px;font-size:11.5px}
+.bk-detail td.k{background:#f7fafc;color:#718096;font-weight:600;width:17%}
+.bk-detail td.v{font-weight:600;color:#1a202c;width:33%}
+.bkstbl{width:100%;border-collapse:collapse;margin:12px 0 4px}
+.bkstbl td{text-align:center;font-size:10.5px;color:#a0aec0;padding:0;vertical-align:top;width:28%}
+.bkstbl td.bkl{width:8%;vertical-align:middle;padding-bottom:20px}
+.bkstbl td.bkl div{width:100%;border-top:2px solid #e2e8f0}
+.bkstbl td.bkl.on div{border-top-color:#38a169}
+.bkstbl td.done{color:#2f855a;font-weight:700}
+.bkstbl td.cancel{color:#c53030;font-weight:700}
+.bkdot{display:inline-block;width:24px;height:24px;border-radius:50%;background:#e2e8f0;color:#718096;font-weight:700;font-size:12px;text-align:center;line-height:24px;margin:0 auto 4px}
+.bkstbl td.done .bkdot{background:#38a169;color:#fff}
+.bkstbl td.cancel .bkdot{background:#e53e3e;color:#fff}
+.bk-slip-foot{margin-top:16px;border-top:1px solid #cbd5e0;padding-top:8px;font-size:10.5px;color:#4a5568;text-align:center;line-height:1.7}
+.res-test-block textarea,#res-note{width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-family:inherit;background:#f8fafc;margin-top:5px;resize:vertical}
+.res-test-block textarea:focus,#res-note:focus{outline:none;border-color:#805ad5;background:#fff}
+.res-test-block textarea[readonly],#res-note[readonly]{background:#f0f4f8;color:#4a5568}
+.rpt-remark{background:#f7fafc;border-left:3px solid #805ad5;padding:7px 10px;font-size:12px;color:#4a5568;margin:2px 0 14px;border-radius:0 6px 6px 0}
+.rpt-sign{display:flex;justify-content:space-between;align-items:flex-end;margin-top:24px;gap:30px}
+.rpt-sign-right{text-align:center;min-width:200px}
+.sign-name{font-family:'Segoe Script','Brush Script MT',cursive;font-size:18px;color:#1a365d;border-bottom:1.5px solid #2d3748;padding:0 10px 4px}
+.sign-meta{font-size:11px;color:#718096;margin-top:4px}
+.res-header{font-weight:600;color:#4a5568;font-size:11px;text-transform:uppercase}
+.res-row input{padding:6px 9px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:12px;width:100%;background:#f8fafc}
+.res-row input:focus{outline:none;border-color:#805ad5;background:#fff}
+.res-test-block{border-left:4px solid #805ad5}
+.rpt-table{width:100%;border-collapse:collapse;margin:6px 0 14px}
+.rpt-table th{background:#805ad5;color:white;padding:6px 10px;text-align:left;font-size:11px}
+.rpt-table td{padding:6px 10px;border-bottom:1px solid #f0f4f8;font-size:12px}
+.rpt-test-title{font-weight:700;color:#553c9a;margin:14px 0 2px;font-size:13px}
+@media(max-width:768px){.res-row{grid-template-columns:1.5fr 1fr 55px 32px;font-size:11px}.res-row input:nth-child(3),.res-row input:nth-child(4){display:none}}
+.total-section{background:#ebf8ff;border-radius:8px;padding:13px 18px;display:flex;justify-content:flex-end;margin-top:10px}
+.total-grid{display:grid;grid-template-columns:auto auto;gap:6px 25px;text-align:right}
+.total-label{color:#4a5568;font-size:13px} .total-value{font-weight:600;color:#1a202c}
+.grand-total .total-label,.grand-total .total-value{font-size:17px;color:#1a365d;font-weight:700}
+
+/* INVOICE */
+.invoice-preview{background:white;border:1px solid #e2e8f0;border-radius:8px;padding:28px;margin-top:13px}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.inv-logo h2{color:#1a365d;font-size:20px} .inv-logo p{color:#718096;font-size:12px}
+.inv-no{text-align:right} .inv-no .number{font-size:18px;font-weight:700;color:#3182ce}
+.inv-divider{border:none;border-top:2px solid #ebf8ff;margin:13px 0}
+.inv-patient{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.inv-section-label{font-size:10px;text-transform:uppercase;color:#718096;margin-bottom:4px;letter-spacing:0.5px}
+.inv-patient-name{font-size:15px;font-weight:600} .inv-patient-detail{font-size:12px;color:#4a5568}
+.inv-table{width:100%;border-collapse:collapse;margin:13px 0}
+.inv-table th{background:#1a365d;color:white;padding:7px 10px;text-align:left;font-size:11px}
+.inv-table td{padding:7px 10px;border-bottom:1px solid #f0f4f8;font-size:12px}
+.inv-total-box{margin-top:13px;display:flex;justify-content:flex-end}
+.inv-total-table{min-width:230px}
+.inv-total-table td{padding:4px 8px;font-size:13px}
+.inv-grand{background:#1a365d;color:white;font-weight:700;font-size:15px}
+.inv-grand td{padding:7px 8px}
+.inv-footer{text-align:center;margin-top:20px;font-size:11px;color:#718096;border-top:1px solid #e2e8f0;padding-top:13px}
+.gst-row{background:#f0fff4}
+
+/* SEARCH */
+.search-bar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px}
+.search-bar input{flex:1}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.active{display:flex}
+.modal{background:white;border-radius:12px;padding:25px;width:90%;max-width:750px;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-title{font-size:17px;font-weight:600;color:#1a365d}
+.close-btn{cursor:pointer;font-size:22px;color:#718096}
+
+/* NOTIFICATION */
+.notif{position:fixed;top:20px;right:20px;color:white;padding:11px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;display:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:250px}
+
+/* COMMISSION TABLE */
+.comm-card{background:linear-gradient(135deg,#805ad5,#6b46c1);color:white;border-radius:12px;padding:18px;margin-bottom:18px}
+.comm-card h3{font-size:16px;margin-bottom:5px} .comm-card p{font-size:13px;opacity:0.8}
+
+/* CHARTS */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.mini-chart{background:white;border-radius:12px;padding:18px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:13px}
+.bar-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1}
+.bar{width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#63b3ed,#3182ce);min-height:4px}
+.bar-label{font-size:9px;color:#718096}
+
+/* GST */
+.gst-summary{background:#f0fff4;border:1px solid #c6f6d5;border-radius:8px;padding:13px;margin-top:10px}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-240px)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .menu-toggle{display:block}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .form-grid{grid-template-columns:1fr 1fr}
+  .chart-grid{grid-template-columns:1fr}
+  .test-row{grid-template-columns:2fr 1fr 70px 60px 40px;font-size:12px}
+}
+
+@media print{
+  .sidebar,.topbar,.no-print{display:none!important}
+  .main{margin-left:0}
+  .invoice-preview,.modal{border:none;padding:0}
+  /* Track screen direct print (Ctrl+P) */
+  body.printing-track .sidebar,
+  body.printing-track .main,
+  body.printing-track #booking-screen,
+  body.printing-track #track-screen{position:static!important;display:block!important;background:#fff!important;padding:0!important;overflow:visible!important}
+  body.printing-track #track-screen .bk-head,
+  body.printing-track #track-screen .bk-close,
+  body.printing-track #track-screen .bk-support,
+  body.printing-track #track-screen .btn-group{display:none!important}
+  body.printing-track #track-screen .bk-box{box-shadow:none!important;max-width:100%!important;border-radius:0!important;width:100%!important}
+  body.printing-track #track-screen .trk-card{background:#fff!important;border:none!important;padding:0!important}
+}
+</style>
+</head>
+<body>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🔬</div>
+    <h2 id="login-labname">Muskan Diagnostic</h2>
+    <p>Laboratory Billing Management System</p>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="l-user" placeholder="Enter username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="l-pass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">🔐 Login</button>
+    <button class="login-btn" style="background:linear-gradient(135deg,#2f855a,#38a169);margin-top:9px;" onclick="openBooking()">🩺 Book a Test Online</button>
+    <button class="login-btn" style="background:linear-gradient(135deg,#2b6cb0,#3182ce);margin-top:9px;" onclick="openTrack()">🔍 Track Booking Status</button>
+    <div class="login-error" id="login-error">❌ Invalid username or password!</div>
+    <div class="login-hint">Default: admin / admin123</div>
+    <div class="login-support" id="login-support"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="logo">
+    <h2>🔬 PathoCare Pro</h2>
+    <p id="lab-name-sidebar">Lab Billing System</p>
+  </div>
+  <div class="nav">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item" onclick="showPage('patients')"><span class="icon">👤</span> Patients</div>
+    <div class="nav-item" onclick="showPage('bookings')"><span class="icon">📅</span> Online Bookings</div>
+    <div class="nav-item" onclick="showPage('tests')"><span class="icon">🧪</span> Lab Tests</div>
+    <div class="nav-item" onclick="showPage('results')"><span class="icon">📋</span> Result Entry</div>
+    <div class="nav-section">Billing</div>
+    <div class="nav-item" onclick="showPage('billing')"><span class="icon">🧾</span> New Bill</div>
+    <div class="nav-item" onclick="showPage('invoices')"><span class="icon">📄</span> All Invoices</div>
+    <div class="nav-section">Finance</div>
+    <div class="nav-item" onclick="showPage('gst')"><span class="icon">🏛️</span> GST Report</div>
+    <div class="nav-item" onclick="showPage('commission')"><span class="icon">👨‍⚕️</span> Doctor Commission</div>
+    <div class="nav-item" onclick="showPage('reports')"><span class="icon">📈</span> Reports</div>
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="showPage('users')"><span class="icon">🔐</span> Users</div>
+    <div class="nav-item" onclick="showPage('settings')"><span class="icon">⚙️</span> Settings</div>
+  </div>
+  <div class="nav-footer">
+    <div style="font-size:11px;color:#a0aec0;margin-bottom:8px;">Logged in as: <b id="logged-user-name">Admin</b></div>
+    <div id="sidebar-support" style="font-size:10px;color:#a0aec0;margin-bottom:8px;line-height:1.5;"></div>
+    <button class="logout-btn" onclick="doLogout()">🚪 Logout</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <h1 id="page-title">Dashboard</h1>
+    </div>
+    <div class="topbar-right">
+      <span class="date-time" id="datetime"></span>
+      <span class="user-badge">👨‍⚕️ <span id="topbar-user">Admin</span></span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card blue"><div><div class="stat-number" id="d-patients">0</div><div class="stat-label">Total Patients</div></div><div class="stat-icon">👤</div></div>
+        <div class="stat-card green"><div><div class="stat-number" id="d-today-bills">0</div><div class="stat-label">Bills Today</div></div><div class="stat-icon">🧾</div></div>
+        <div class="stat-card orange"><div><div class="stat-number" id="d-today-rev">₹0</div><div class="stat-label">Revenue Today</div></div><div class="stat-icon">💰</div></div>
+        <div class="stat-card purple"><div><div class="stat-number" id="d-pending">0</div><div class="stat-label">Pending Bills</div></div><div class="stat-icon">⏳</div></div>
+        <div class="stat-card red"><div><div class="stat-number" id="d-total-rev">₹0</div><div class="stat-label">Total Revenue</div></div><div class="stat-icon">📈</div></div>
+        <div class="stat-card teal"><div><div class="stat-number" id="d-total-gst">₹0</div><div class="stat-label">GST Collected</div></div><div class="stat-icon">🏛️</div></div>
+        <div class="stat-card blue" style="grid-column:span 1"><div><div class="stat-number" id="d-comm">₹0</div><div class="stat-label">Commission Due</div></div><div class="stat-icon">👨‍⚕️</div></div>
+        <div class="stat-card green"><div><div class="stat-number" id="d-tests-count">0</div><div class="stat-label">Tests Conducted</div></div><div class="stat-icon">🧪</div></div>
+      </div>
+      <div class="chart-grid">
+        <div class="mini-chart">
+          <div class="card-title">📊 Monthly Revenue (₹)</div>
+          <div class="bar-chart" id="dash-chart"></div>
+        </div>
+        <div class="mini-chart">
+          <div class="card-title">🏆 Top Tests</div>
+          <div id="top-tests" style="margin-top:13px;"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Recent Bills</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Patient</th><th>Tests</th><th>GST</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody id="dash-recent"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENTS -->
+    <div class="page" id="page-patients">
+      <div class="card">
+        <div class="card-title">👤 Patient Registration</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Patient Name *</label><input type="text" id="p-name" placeholder="Full Name"></div>
+          <div class="form-group"><label>Age</label><input type="number" id="p-age" placeholder="Age"></div>
+          <div class="form-group"><label>Gender</label><select id="p-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+          <div class="form-group"><label>Phone *</label><input type="tel" id="p-phone" placeholder="Mobile Number"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="p-email" placeholder="Email"></div>
+          <div class="form-group"><label>Blood Group</label><select id="p-blood"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select></div>
+          <div class="form-group"><label>Referred By (Doctor)</label><input type="text" id="p-doctor" placeholder="Doctor Name" list="doctor-list"></div>
+          <div class="form-group form-2"><label>Address</label><input type="text" id="p-address" placeholder="Full Address"></div>
+        </div>
+        <datalist id="doctor-list"></datalist>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addPatient()">➕ Register Patient</button>
+          <button class="btn btn-outline" onclick="clearPatientForm()">🔄 Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Patient List <span style="font-size:12px;font-weight:400;color:#718096;" id="patient-count-label"></span></div>
+        <div class="search-bar">
+          <input type="text" id="patient-search" placeholder="🔍 Search by name, phone, ID..." oninput="renderPatients()">
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>#</th><th>ID</th><th>Name</th><th>Age/Gender</th><th>Blood</th><th>Phone</th><th>Referred By</th><th>Actions</th></tr></thead>
+          <tbody id="patients-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOOKINGS -->
+    <div class="page" id="page-bookings">
+      <div class="card">
+        <div class="card-title">📅 Online Test Bookings</div>
+        <div class="search-bar">
+          <input type="text" id="booking-search" placeholder="🔍 Search by booking ID, name, phone..." oninput="renderBookings()">
+          <select id="booking-status-filter" onchange="renderBookings()" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+            <option value="">All Status</option><option>Pending</option><option>Confirmed</option><option>Completed</option><option>Cancelled</option>
+          </select>
+          <button class="btn btn-success" onclick="openBooking()">🌐 Open Public Booking Form</button>
+          <button class="btn btn-teal" onclick="cloudSyncUI()">🔄 Sync from Cloud</button>
+          <span id="bookings-cloud-badge" class="status-badge status-draft" style="align-self:center;">CLOUD: OFF</span>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Booking ID</th><th>Patient</th><th>Phone</th><th>Tests</th><th>Total</th><th>Collection</th><th>Date/Slot</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="bookings-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAB TESTS -->
+    <div class="page" id="page-tests">
+      <div class="card">
+        <div class="card-title">🧪 Add Lab Test / Package</div>
+        <div class="form-grid">
+          <div class="form-group form-2"><label>Test Name *</label><input type="text" id="t-name" placeholder="e.g., CBC, Blood Sugar Fasting"></div>
+          <div class="form-group"><label>Category</label><select id="t-cat"><option>Hematology</option><option>Biochemistry</option><option>Microbiology</option><option>Serology</option><option>Immunology</option><option>Urine Analysis</option><option>Hormone</option><option>Lipid Profile</option><option>Thyroid</option><option>Package</option><option>Other</option></select></div>
+          <div class="form-group"><label>Price (₹) *</label><input type="number" id="t-price" placeholder="0.00"></div>
+          <div class="form-group"><label>GST %</label><select id="t-gst"><option value="0">0% (Exempt)</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option></select></div>
+          <div class="form-group"><label>TAT (Hours)</label><input type="number" id="t-tat" placeholder="24"></div>
+          <div class="form-group"><label>Sample Type</label><select id="t-sample"><option>Blood</option><option>Urine</option><option>Stool</option><option>Swab</option><option>Sputum</option><option>CSF</option><option>Other</option></select></div>
+          <div class="form-group"><label>Commission %</label><input type="number" id="t-comm" placeholder="0" min="0" max="50"></div>
+          <div class="form-group"><label>Status</label><select id="t-status"><option>Active</option><option>Inactive</option></select></div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addTest()">➕ Add Test</button>
+          <button class="btn btn-outline" onclick="clearTestForm()">🔄 Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Test Master List</div>
+        <div class="search-bar">
+          <input type="text" id="test-search" placeholder="🔍 Search tests..." oninput="renderTests()">
+          <select id="test-cat-filter" onchange="renderTests()" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>#</th><th>Test Name</th><th>Category</th><th>Sample</th><th>Price</th><th>GST%</th><th>Price+GST</th><th>Commission%</th><th>TAT</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="tests-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULT ENTRY -->
+    <div class="page" id="page-results">
+      <div class="card">
+        <div class="card-title">📋 Lab Report Entry</div>
+        <div class="form-grid">
+          <div class="form-group form-2"><label>Select Bill / Patient *</label><select id="res-bill" onchange="loadBillForReport()"><option value="">-- Select Bill --</option></select></div>
+          <div class="form-group"><label>Report Date</label><input type="date" id="res-date"></div>
+          <div class="form-group"><label>Verifying Doctor (signature)</label><input type="text" id="res-verified" placeholder="Dr. Name / Pathologist"></div>
+          <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" onclick="loadBillForReport()">🔄 Load Tests</button></div>
+        </div>
+      </div>
+
+      <div id="res-entry-area" style="display:none;"></div>
+
+      <div id="report-section" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:13px 18px;background:#faf5ff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span style="font-weight:600;color:#553c9a;">🧾 Report Preview</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-success btn-sm no-print" onclick="printReport()">🖨️ Print</button>
+              <button class="btn btn-primary btn-sm no-print" onclick="downloadLabReportPDF()">⬇️ PDF</button>
+              <button class="btn btn-teal btn-sm no-print" onclick="whatsappReport()">📱 WhatsApp</button>
+            </div>
+          </div>
+          <div class="invoice-preview" id="report-content"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗂️ Saved Reports</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Patient</th><th>Date</th><th>Tests</th><th>Verified By</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="reports-list-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div class="page" id="page-billing">
+      <div class="card">
+        <div class="card-title">🧾 New Bill / Invoice</div>
+        <div class="form-grid">
+          <div class="form-group form-2"><label>Select Patient *</label><select id="b-patient" onchange="fillPatientDetails()"><option value="">-- Select Patient --</option></select></div>
+          <div class="form-group"><label>Bill Date</label><input type="date" id="b-date"></div>
+          <div class="form-group"><label>Referred By (Doctor)</label><input type="text" id="b-doctor" placeholder="Doctor Name" list="bill-doctor-list"></div>
+          <div class="form-group"><label>Payment Method</label><select id="b-payment"><option>Cash</option><option>UPI</option><option>Card</option><option>Net Banking</option><option>Insurance</option><option>Credit</option></select></div>
+          <div class="form-group"><label>Discount (%)</label><input type="number" id="b-discount" value="0" min="0" max="100" oninput="calcTotal()"></div>
+          <div class="form-group"><label>Notes</label><input type="text" id="b-notes" placeholder="Special notes"></div>
+        </div>
+        <datalist id="bill-doctor-list"></datalist>
+
+        <div style="margin-top:18px;">
+          <div class="card-title">🧪 Add Tests</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+            <select id="add-test-select" style="flex:1;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;min-width:200px;font-size:13px;">
+              <option value="">-- Select Test --</option>
+            </select>
+            <button class="btn btn-success" onclick="addTestToBill()">➕ Add</button>
+          </div>
+          <div class="test-row test-header">
+            <span>Test Name</span><span>Category</span><span>Price</span><span>GST%</span><span>GST Amt</span><span>Total</span><span></span>
+          </div>
+          <div id="tests-container"></div>
+          <div class="total-section">
+            <div class="total-grid">
+              <span class="total-label">Subtotal:</span><span class="total-value" id="subtotal">₹0.00</span>
+              <span class="total-label">Discount:</span><span class="total-value" id="discount-val">₹0.00</span>
+              <span class="total-label">GST Amount:</span><span class="total-value" id="gst-val">₹0.00</span>
+              <span class="total-label grand-total">Grand Total:</span><span class="total-value grand-total" id="grand-total">₹0.00</span>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="generateBill()">✅ Generate Bill</button>
+          <button class="btn btn-outline" onclick="clearBillingForm()">🔄 Clear</button>
+        </div>
+      </div>
+      <div id="invoice-section" style="display:none;">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:13px 18px;background:#ebf8ff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span style="font-weight:600;color:#1a365d;">📄 Invoice Preview</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-success btn-sm no-print" onclick="printInvoice()">🖨️ Print</button>
+              <button class="btn btn-primary btn-sm no-print" onclick="downloadPDF()">⬇️ PDF</button>
+              <button class="btn btn-teal btn-sm no-print" onclick="whatsappShare()">📱 WhatsApp</button>
+            </div>
+          </div>
+          <div class="invoice-preview" id="invoice-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVOICES -->
+    <div class="page" id="page-invoices">
+      <div class="card">
+        <div class="card-title">📄 All Invoices</div>
+        <div class="search-bar">
+          <input type="text" id="invoice-search" placeholder="🔍 Search bill no, patient..." oninput="renderInvoices()">
+          <select id="inv-status-filter" onchange="renderInvoices()" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+            <option value="">All Status</option><option>Paid</option><option>Pending</option><option>Cancelled</option>
+          </select>
+          <input type="date" id="inv-date-from" onchange="renderInvoices()" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <input type="date" id="inv-date-to" onchange="renderInvoices()" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Patient</th><th>Tests</th><th>Sub</th><th>GST</th><th>Disc</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="invoices-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GST REPORT -->
+    <div class="page" id="page-gst">
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card teal"><div><div class="stat-number" id="gst-total">₹0</div><div class="stat-label">Total GST Collected</div></div><div class="stat-icon">🏛️</div></div>
+        <div class="stat-card blue"><div><div class="stat-number" id="gst-5">₹0</div><div class="stat-label">GST @ 5%</div></div><div class="stat-icon">📊</div></div>
+        <div class="stat-card orange"><div><div class="stat-number" id="gst-12">₹0</div><div class="stat-label">GST @ 12%</div></div><div class="stat-icon">📊</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🏛️ GST Report</div>
+        <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
+          <input type="date" id="gst-from" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <input type="date" id="gst-to" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <button class="btn btn-primary" onclick="generateGSTReport()">📊 Generate</button>
+          <button class="btn btn-success" onclick="downloadGSTPDF()">⬇️ PDF</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Date</th><th>Patient</th><th>Taxable Amt</th><th>GST%</th><th>GST Amt</th><th>Total</th></tr></thead>
+          <tbody id="gst-table"></tbody></table>
+        </div>
+        <div id="gst-report-total" style="text-align:right;margin-top:13px;font-weight:700;color:#1a365d;font-size:15px;"></div>
+      </div>
+    </div>
+
+    <!-- DOCTOR COMMISSION -->
+    <div class="page" id="page-commission">
+      <div class="card">
+        <div class="card-title">👨‍⚕️ Doctor Commission Tracker</div>
+        <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
+          <input type="date" id="comm-from" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <input type="date" id="comm-to" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <button class="btn btn-purple" onclick="generateCommissionReport()">📊 Generate</button>
+          <button class="btn btn-success" onclick="downloadCommPDF()">⬇️ PDF</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Doctor Name</th><th>Patients Referred</th><th>Bills</th><th>Total Revenue</th><th>Commission %</th><th>Commission Amt</th><th>Status</th></tr></thead>
+          <tbody id="comm-table"></tbody></table>
+        </div>
+        <div id="comm-total" style="text-align:right;margin-top:13px;font-weight:700;color:#805ad5;font-size:15px;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Commission History (per bill)</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Date</th><th>Patient</th><th>Doctor</th><th>Bill Amt</th><th>Commission</th></tr></thead>
+          <tbody id="comm-detail-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="stats-grid">
+        <div class="stat-card blue"><div><div class="stat-number" id="r-bills">0</div><div class="stat-label">Total Bills</div></div><div class="stat-icon">🧾</div></div>
+        <div class="stat-card green"><div><div class="stat-number" id="r-rev">₹0</div><div class="stat-label">Total Revenue</div></div><div class="stat-icon">💰</div></div>
+        <div class="stat-card orange"><div><div class="stat-number" id="r-pat">0</div><div class="stat-label">Total Patients</div></div><div class="stat-icon">👤</div></div>
+        <div class="stat-card purple"><div><div class="stat-number" id="r-test-cnt">0</div><div class="stat-label">Tests Done</div></div><div class="stat-icon">🧪</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Revenue Report</div>
+        <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
+          <input type="date" id="r-from" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <input type="date" id="r-to" style="padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;">
+          <button class="btn btn-primary" onclick="generateReport()">📊 Generate</button>
+          <button class="btn btn-success" onclick="downloadReportPDF()">⬇️ PDF</button>
+        </div>
+        <div class="table-wrap">
+          <table><thead><tr><th>Bill No</th><th>Date</th><th>Patient</th><th>Tests</th><th>GST</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead>
+          <tbody id="report-table"></tbody></table>
+        </div>
+        <div id="report-total" style="text-align:right;margin-top:13px;font-size:15px;font-weight:700;color:#1a365d;"></div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="page-users">
+      <div class="card">
+        <div class="card-title">🔐 User Management</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Username *</label><input type="text" id="u-name" placeholder="Username"></div>
+          <div class="form-group"><label>Password *</label><input type="password" id="u-pass" placeholder="Password"></div>
+          <div class="form-group"><label>Role</label><select id="u-role"><option value="admin">Admin</option><option value="receptionist">Receptionist</option><option value="accountant">Accountant</option></select></div>
+          <div class="form-group"><label>Full Name</label><input type="text" id="u-fullname" placeholder="Full Name"></div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="addUser()">➕ Add User</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 User List</div>
+        <div class="table-wrap">
+          <table><thead><tr><th>#</th><th>Username</th><th>Full Name</th><th>Role</th><th>Action</th></tr></thead>
+          <tbody id="users-table"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-title">🏥 Lab Information</div>
+        <div class="form-grid">
+          <div class="form-group form-2"><label>Lab Name *</label><input type="text" id="s-labname" placeholder="PathoCare Diagnostics"></div>
+          <div class="form-group"><label>Phone</label><input type="text" id="s-phone" placeholder="Lab Phone"></div>
+          <div class="form-group form-2"><label>Address</label><input type="text" id="s-address" placeholder="Full Address"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="s-email" placeholder="Lab Email"></div>
+          <div class="form-group"><label>Reg No</label><input type="text" id="s-reg" placeholder="Registration No"></div>
+          <div class="form-group"><label>GSTIN</label><input type="text" id="s-gst" placeholder="GSTIN Number"></div>
+          <div class="form-group"><label>City</label><input type="text" id="s-city" placeholder="City"></div>
+          <div class="form-group"><label>Default Commission %</label><input type="number" id="s-comm" placeholder="0" value="10"></div>
+          <div class="form-group form-2"><label>Tagline (report header)</label><input type="text" id="s-tagline" placeholder="Accurate | Caring | Instant"></div>
+          <div class="form-group"><label>Website</label><input type="text" id="s-website" placeholder="www.example.com"></div>
+          <div class="form-group form-2"><label>Sample Collection Centre Address</label><input type="text" id="s-sampleAt" placeholder="Leave blank to use lab address"></div>
+          <div class="form-group"><label>Lab Technician Name</label><input type="text" id="s-technician" placeholder="Medical Lab Technician"></div>
+          <div class="form-group"><label>Technician Qualification</label><input type="text" id="s-technicianQual" placeholder="DMLT, BMLT"></div>
+          <div class="form-group"><label>Pathologist 1</label><input type="text" id="s-pathologist1" placeholder="Dr. Name"></div>
+          <div class="form-group"><label>Pathologist 1 Qualification</label><input type="text" id="s-pathologist1Qual" placeholder="MD, Pathologist"></div>
+          <div class="form-group"><label>Pathologist 2</label><input type="text" id="s-pathologist2" placeholder="Dr. Name"></div>
+          <div class="form-group"><label>Pathologist 2 Qualification</label><input type="text" id="s-pathologist2Qual" placeholder="MD, Pathologist"></div>
+          <div class="form-group form-full"><label>Invoice Footer</label><input type="text" id="s-footer" value="Thank you for choosing our lab. Report is computer generated."></div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🛠️ Support Team</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Support Team Name</label><input type="text" id="s-supportName" placeholder="Muskan Diagnostic Support Team"></div>
+          <div class="form-group"><label>Support Phone</label><input type="text" id="s-supportPhone" placeholder="+91 98XXXXXXXX"></div>
+          <div class="form-group"><label>Support Email</label><input type="text" id="s-supportEmail" placeholder="support@example.com"></div>
+          <div class="form-group"><label>Booking WhatsApp Number</label><input type="text" id="s-bookingWhatsapp" placeholder="+91 98XXXXXXXX"></div>
+        </div>
+        <div style="font-size:12px;color:#718096;margin-top:10px;">Yeh support details login screen aur sidebar me dikhengi. Software help ke liye yahi contact use hoga.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">☁️ Cloud Backend (Supabase) <span id="cloud-badge" class="status-badge status-draft" style="margin-left:auto;">CLOUD: OFF</span></div>
+        <div class="form-grid">
+          <div class="form-group form-2"><label>Supabase Project URL</label><input type="text" id="s-supabaseUrl" placeholder="https://xxxxxxxx.supabase.co"></div>
+          <div class="form-group"><label>Supabase Anon Key</label><input type="text" id="s-supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIs..."></div>
+          <div class="form-group form-2"><label>Admin Email (Supabase Auth)</label><input type="text" id="s-supabaseEmail" placeholder="admin@yourlab.com"></div>
+          <div class="form-group"><label>Admin Password (save nahi hota)</label><input type="password" id="supabasePass" placeholder="Password"></div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="saveSettings()">💾 Save</button>
+          <button class="btn btn-success" onclick="cloudSignInUI()">🔐 Sign In to Cloud</button>
+          <button class="btn btn-teal" onclick="cloudSyncUI()">🔄 Full Database Sync</button>
+          <button class="btn btn-danger" onclick="cloudSignOutUI()">🚪 Sign Out</button>
+        </div>
+        <div id="cloud-help" style="font-size:12px;color:#718096;margin-top:12px;line-height:1.6;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- VIEW INVOICE MODAL -->
+<div class="modal-overlay" id="view-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📄 Invoice Details</span>
+      <span class="close-btn" onclick="closeModal()">✕</span>
+    </div>
+    <div id="modal-invoice-content"></div>
+    <div class="btn-group no-print">
+      <button class="btn btn-success" onclick="printModal()">🖨️ Print</button>
+      <button class="btn btn-primary" onclick="downloadModalPDF()">⬇️ PDF</button>
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ONLINE BOOKING (public) -->
+<div id="booking-screen">
+  <div class="bk-box">
+    <div class="bk-head">
+      <div class="bk-head-left">
+        <div class="rp-logo" style="background:#fff;color:#1a365d;">✚</div>
+        <div>
+          <div class="bk-labname" id="bk-labname">Muskan Diagnostic</div>
+          <div class="bk-tagline" id="bk-tagline">Book your lab test online</div>
+        </div>
+      </div>
+      <button class="bk-close" onclick="closeBooking()">✕</button>
+    </div>
+    <div class="bk-body">
+      <div>
+        <h3>🧑 Patient Details</h3>
+        <div class="bk-grid">
+          <input id="bk-name" placeholder="Full Name *">
+          <input id="bk-age" type="number" placeholder="Age">
+          <select id="bk-gender"><option value="">Gender</option><option>Male</option><option>Female</option><option>Other</option></select>
+          <input id="bk-phone" type="tel" placeholder="Mobile Number *">
+          <input id="bk-doctor" placeholder="Referred By / Doctor Name" list="doctor-list">
+          <input id="bk-email" placeholder="Email">
+          <select id="bk-collection"><option>Lab Visit</option><option>Home Collection</option></select>
+          <input id="bk-date" type="date">
+          <select id="bk-slot">
+            <option>07:00 AM - 09:00 AM</option><option>09:00 AM - 11:00 AM</option>
+            <option>11:00 AM - 01:00 PM</option><option>01:00 PM - 03:00 PM</option>
+            <option>03:00 PM - 05:00 PM</option><option>05:00 PM - 07:00 PM</option>
+          </select>
+          <input id="bk-address" class="bk-full" placeholder="Address (for home collection)">
+          <input id="bk-notes" class="bk-full" placeholder="Any notes / symptoms">
+        </div>
+      </div>
+      <div>
+        <h3>🧪 Select Tests</h3>
+        <input id="bk-test-search" placeholder="🔍 Search tests..." oninput="renderBookingTests()">
+        <div id="bk-test-list" class="bk-testlist"></div>
+        <div class="bk-total">Total: <b id="bk-total">₹0.00</b></div>
+      </div>
+    </div>
+    <div class="bk-actions">
+      <button class="btn btn-success" onclick="submitBooking()">✅ Submit Booking</button>
+      <button class="btn btn-teal" onclick="bookOnWhatsApp()">📱 Book on WhatsApp</button>
+      <button class="btn btn-outline" onclick="closeBooking()">Close</button>
+    </div>
+    <div class="bk-support" id="bk-support"></div>
+  </div>
+</div>
+
+<!-- TRACK BOOKING (public) -->
+<div id="track-screen">
+  <div class="bk-box" style="max-width:600px;">
+    <div class="bk-head">
+      <div class="bk-head-left">
+        <div class="rp-logo" style="background:#fff;color:#1a365d;">✚</div>
+        <div>
+          <div class="bk-labname" id="trk-labname">Muskan Diagnostic</div>
+          <div class="bk-tagline">Track your test booking status</div>
+        </div>
+      </div>
+      <button class="bk-close" onclick="closeTrack()">✕</button>
+    </div>
+    <div style="padding:22px;">
+      <div class="bk-grid">
+        <input id="trk-code" placeholder="Booking ID (e.g. BK1A2B3C45)" style="text-transform:uppercase;">
+        <input id="trk-phone" type="tel" placeholder="Mobile Number *">
+      </div>
+      <div class="btn-group" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="trackBooking()">🔍 Check Status</button>
+        <button class="btn btn-outline" onclick="closeTrack()">Close</button>
+      </div>
+      <div id="trk-result"></div>
+
+      <div class="card" style="margin-top:18px;border-left:4px solid #3182ce;">
+        <div class="card-title">📥 Download Lab Report</div>
+        <div style="font-size:12px;color:#718096;margin-bottom:10px;">Enter your Booking ID and mobile number to check whether your verified report is available.</div>
+        <div class="bk-grid">
+          <input id="rpt-code" placeholder="Booking ID (e.g. BK1A2B3C45)" style="text-transform:uppercase;">
+          <input id="rpt-phone" type="tel" placeholder="Mobile Number *">
+        </div>
+        <div class="btn-group" style="margin-top:12px;">
+          <button class="btn btn-primary" onclick="findPatientReport()">🔍 Find Report</button>
+        </div>
+        <div id="patient-report-result"></div>
+      </div>
+    </div>
+    <div class="bk-support" id="trk-support"></div>
+  </div>
+</div>
+
+<script>
+// ====== STORAGE ======
+let patients = JSON.parse(localStorage.getItem('pcp_patients')||'[]');
+let tests = JSON.parse(localStorage.getItem('pcp_tests')||'[]');
+let invoices = JSON.parse(localStorage.getItem('pcp_invoices')||'[]');
+let users = JSON.parse(localStorage.getItem('pcp_users')||'[{"username":"admin","password":"admin123","role":"admin","fullname":"Administrator"}]');
+let labReports = JSON.parse(localStorage.getItem('pcp_reports')||'{}');
+let bookings = JSON.parse(localStorage.getItem('pcp_bookings')||'[]');
+let bkSelected = [];
+let bkCounter = parseInt(localStorage.getItem('pcp_bkcounter')||'1');
+
+// ============================================================
+//  CLOUD BACKEND (Supabase)
+//  Yahan apna Supabase Project URL + anon key paste karein.
+//  (Settings page se bhi set kar sakte hain - wahan se override hota hai)
+//  Anon key public hone ke liye hi banti hai - client me rakhna safe hai.
+// ============================================================
+const DEFAULT_CLOUD = { url:'', key:'' };
+let settings = JSON.parse(localStorage.getItem('pcp_settings')||'{"labname":"Muskan Diagnostic","phone":"","address":"","email":"","reg":"","gst":"","city":"","comm":10,"tagline":"Accurate | Caring | Instant","website":"","sampleAt":"","technician":"Medical Lab Technician","technicianQual":"DMLT, BMLT","pathologist1":"Dr. Payal Shah","pathologist1Qual":"MD, Pathologist","pathologist2":"Dr. Vimal Shah","pathologist2Qual":"MD, Pathologist","supportName":"Muskan Diagnostic Support Team","supportPhone":"","supportEmail":"","bookingWhatsapp":"","supabaseUrl":"","supabaseKey":"","supabaseEmail":"","footer":"Thank you for choosing our lab. Report is computer generated."}');
+let billCounter = parseInt(localStorage.getItem('pcp_billcounter')||'1000');
+let patCounter = parseInt(localStorage.getItem('pcp_patcounter')||'1');
+let billTests = [];
+let currentInvoice = null;
+let currentReport = null;
+let pendingBookingId = null;
+let loggedUser = null;
+
+// Test parameter library (for auto-filling result entry)
+const PARAM_LIB = [
+  {match:['cbc','complete blood count','haemogram','hemogram'],params:[['Hemoglobin','g/dL','13.0 - 17.0'],['Total WBC','cells/µL','4,000 - 11,000'],['RBC Count','million/µL','4.5 - 5.5'],['Platelet Count','lakhs/µL','1.5 - 4.5'],['PCV / Hematocrit','%','40 - 50'],['MCV','fL','80 - 100'],['MCH','pg','27 - 32'],['MCHC','g/dL','32 - 36'],['Neutrophils','%','40 - 75'],['Lymphocytes','%','20 - 45'],['Eosinophils','%','1 - 6'],['Monocytes','%','2 - 10'],['Basophils','%','0 - 1']]},
+  {match:['sugar fasting','fbs','fasting blood sugar','glucose fasting','fasting glucose'],params:[['Fasting Blood Sugar','mg/dL','70 - 100']]},
+  {match:['sugar pp','ppbs','post prandial'],params:[['Post Prandial Blood Sugar','mg/dL','< 140']]},
+  {match:['hba1c','glycated'],params:[['HbA1c','%','< 5.7 (Normal)']]},
+  {match:['lipid'],params:[['Total Cholesterol','mg/dL','< 200'],['Triglycerides','mg/dL','< 150'],['HDL Cholesterol','mg/dL','> 40'],['LDL Cholesterol','mg/dL','< 100'],['VLDL Cholesterol','mg/dL','< 30'],['Total Chol / HDL Ratio','Ratio','< 5.0']]},
+  {match:['thyroid','t3','t4','tsh'],params:[['T3 (Triiodothyronine)','ng/dL','80 - 200'],['T4 (Thyroxine)','µg/dL','5.0 - 12.0'],['TSH','µIU/mL','0.4 - 4.0']]},
+  {match:['lft','liver'],params:[['Bilirubin Total','mg/dL','0.3 - 1.2'],['Bilirubin Direct','mg/dL','0.0 - 0.3'],['SGOT (AST)','U/L','5 - 40'],['SGPT (ALT)','U/L','5 - 40'],['Alkaline Phosphatase','U/L','40 - 130'],['Total Protein','g/dL','6.0 - 8.3'],['Albumin','g/dL','3.5 - 5.0'],['Globulin','g/dL','2.0 - 3.5']]},
+  {match:['kft','kidney','renal'],params:[['Blood Urea','mg/dL','15 - 40'],['Creatinine','mg/dL','0.6 - 1.2'],['Uric Acid','mg/dL','3.5 - 7.2'],['Sodium','mEq/L','135 - 145'],['Potassium','mEq/L','3.5 - 5.1'],['Chloride','mEq/L','98 - 107']]},
+  {match:['urine routine','urine analysis','urinalysis'],params:[['Colour','','Pale Yellow'],['Appearance','','Clear'],['pH','','4.5 - 8.0'],['Specific Gravity','','1.005 - 1.030'],['Protein','','Absent'],['Glucose','','Absent'],['Ketones','','Absent'],['Blood','','Absent'],['Pus Cells / WBC','/hpf','0 - 5'],['Epithelial Cells','/hpf','0 - 5'],['RBC','/hpf','0 - 2']]},
+  {match:['widal'],params:[['S. Typhi O','titre','< 1:80'],['S. Typhi H','titre','< 1:80'],['S. Paratyphi AH','titre','< 1:80'],['S. Paratyphi BH','titre','< 1:80']]},
+  {match:['dengue'],params:[['Dengue NS1 Antigen','','Negative'],['Dengue IgM','','Negative'],['Dengue IgG','','Negative']]},
+  {match:['vitamin d'],params:[['25-OH Vitamin D','ng/mL','30 - 100']]},
+  {match:['vitamin b12'],params:[['Vitamin B12','pg/mL','200 - 900']]},
+  {match:['covid'],params:[['SARS-CoV-2 RT-PCR','','Negative'],['Ct Value','','-']]},
+  {match:['crp','c-reactive'],params:[['C-Reactive Protein (CRP)','mg/L','< 5']]},
+  {match:['esr'],params:[['ESR','mm/hr','0 - 20']]},
+  {match:['blood group'],params:[['Blood Group','',''],['Rh Factor','','']]},
+  {match:['full body','checkup','package','master health'],params:[['Hemoglobin','g/dL','13.0 - 17.0'],['Total WBC','cells/µL','4,000 - 11,000'],['Fasting Blood Sugar','mg/dL','70 - 100'],['Total Cholesterol','mg/dL','< 200'],['Blood Urea','mg/dL','15 - 40'],['Creatinine','mg/dL','0.6 - 1.2'],['SGOT (AST)','U/L','5 - 40'],['SGPT (ALT)','U/L','5 - 40'],['TSH','µIU/mL','0.4 - 4.0']]},
+];
+
+// 'About this test' descriptions (auto-filled, editable, prints on report)
+const TEST_ABOUT = [
+  {match:['cbc','complete blood count'],text:'Complete Blood Count (CBC) evaluates haemoglobin, total & differential leucocyte count and platelet count to assess anaemia, infection and bleeding disorders.'},
+  {match:['sugar fasting','fbs','fasting'],text:'Fasting blood glucose is used to screen and monitor diabetes mellitus. Sample is collected after 8\u201310 hours of overnight fasting.'},
+  {match:['sugar pp','ppbs','post prandial'],text:'Post prandial blood glucose reflects glucose control after a meal and is collected 2 hours after food intake.'},
+  {match:['hba1c','glycated'],text:'HbA1c reflects average blood glucose over the past 2\u20133 months and is used for long-term diabetes monitoring.'},
+  {match:['lipid'],text:'Lipid profile measures total cholesterol, triglycerides, HDL, LDL and VLDL to assess cardiovascular risk.'},
+  {match:['thyroid','t3','t4','tsh'],text:'Thyroid profile measures T3, T4 and TSH to evaluate thyroid function (hypothyroidism / hyperthyroidism).'},
+  {match:['lft','liver'],text:'Liver Function Test assesses hepatic function through bilirubin, transaminases, alkaline phosphatase and protein levels.'},
+  {match:['kft','kidney','renal'],text:'Kidney Function Test evaluates renal function using urea, creatinine, uric acid and electrolytes.'},
+  {match:['urine routine','urine analysis','urinalysis'],text:'Routine urine examination screens for infection, proteinuria, glycosuria and other renal disorders.'},
+  {match:['widal'],text:'Widal test is a serological test for enteric fever (typhoid) detecting antibodies against Salmonella species.'},
+  {match:['dengue'],text:'Dengue NS1 antigen / IgM / IgG detects dengue virus infection. NS1 is positive in early infection.'},
+  {match:['vitamin d'],text:'25-OH Vitamin D assesses vitamin D status, important for bone health and calcium metabolism.'},
+  {match:['vitamin b12'],text:'Vitamin B12 is essential for nerve function and red blood cell formation; deficiency causes anaemia.'},
+  {match:['covid'],text:'RT-PCR for SARS-CoV-2 detects viral RNA and is the gold standard test for COVID-19 infection.'},
+  {match:['crp','c-reactive'],text:'C-Reactive Protein is an acute phase reactant used to detect inflammation and infection.'},
+  {match:['esr'],text:'ESR is a non-specific marker of inflammation; elevated values suggest infection or inflammatory disease.'},
+  {match:['full body','checkup','package','master health'],text:'Full body health checkup package screens multiple organ systems for early detection of disease.'},
+];
+function aboutFor(name){const n=(name||'').toLowerCase();const e=TEST_ABOUT.find(x=>x.match.some(m=>n.includes(m)));return e?e.text:'';}
+function fmtDateTime(iso){if(!iso)return '-';const d=new Date(iso);return d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function reportActionsHTML(locked){
+  return `<button class="btn btn-outline btn-sm save-draft" onclick="saveLabReport('Draft')">💾 Save Draft</button>
+    <button class="btn btn-success btn-sm verify-btn" onclick="verifyReport()">✅ Verify Report</button>
+    <button class="btn btn-primary btn-sm" onclick="printReport()">🖨️ Print</button>
+    <button class="btn btn-teal btn-sm" onclick="downloadLabReportPDF()">⬇️ PDF</button>
+    ${locked?`<button class="btn btn-warning btn-sm" onclick="reopenReport()">✏️ Reopen (Draft)</button>`:`<button class="btn btn-outline btn-sm" onclick="clearResultEntry()">🔄 Clear</button>`}`;
+}
+
+// ---- Report styling (injected into page + used by the print window) ----
+const REPORT_CSS = `
+.rpt-page{background:#fff;color:#2d3748;font-size:11px;position:relative;overflow:hidden;padding:2px;page-break-inside:avoid;break-inside:avoid}
+.rpt-wm{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);font-size:52px;font-weight:800;color:#2b6cb0;opacity:0.06;white-space:nowrap;pointer-events:none;z-index:0}
+.rpt-page>*{position:relative;z-index:1}
+.rp-head{display:flex;justify-content:space-between;align-items:center}
+.rp-head-left{display:flex;align-items:center;gap:9px}
+.rp-logo{width:38px;height:38px;border-radius:50%;background:#1a365d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px}
+.rp-labname{font-size:18px;font-weight:800;color:#1a365d;text-transform:uppercase;line-height:1.1}
+.rp-labname span{color:#2b6cb0}
+.rp-tagline{font-size:11px;font-weight:600;color:#2b6cb0;margin-top:1px}
+.rp-head-right{text-align:right;font-size:11px;line-height:1.5}
+.rp-addr{font-size:10.5px;color:#4a5568;margin-top:4px}
+.rp-stripe{margin-top:6px;background:#1a365d;height:18px;display:flex;align-items:center;justify-content:flex-end;padding-right:12px;position:relative;overflow:hidden}
+.rp-stripe-deco{position:absolute;left:0;top:0;height:100%;width:200px}
+.rp-web{color:#fff;font-size:12px;font-weight:600;position:relative;z-index:2}
+.rp-pat{display:flex;justify-content:space-between;gap:12px;margin:9px 0 4px;border-bottom:1px solid #cbd5e0;padding-bottom:7px}
+.rp-pname{font-size:16px;font-weight:800;color:#1a202c;margin-bottom:1px}
+.rp-pat-left>div,.rp-pat-right>div{font-size:11px;line-height:1.45}
+.rp-pat-qr{display:flex;gap:10px;align-items:flex-start}
+.rp-pat-qr>div>div{font-size:12px;line-height:1.5}
+.rp-lbl{font-weight:700}
+.rp-pat-right{text-align:right}
+.rp-barcode{margin-left:auto;margin-bottom:3px;line-height:0}
+.rp-refby{font-weight:700;margin-top:3px}
+.rp-test-title{text-align:center;font-size:14px;font-weight:800;color:#1a202c;margin:9px 0 5px;text-transform:uppercase}
+.rp-table{width:100%;border-collapse:collapse}
+.rp-table th{border-top:2px solid #1a365d;border-bottom:2px solid #1a365d;padding:5px 7px;text-align:left;font-size:11.5px;color:#1a202c}
+.rp-table td{padding:5px 7px;border-bottom:1px solid #e2e8f0;font-size:11.5px;vertical-align:top}
+.rp-table tr{page-break-inside:avoid;break-inside:avoid}
+.rp-method{font-size:9px;color:#718096;font-weight:400;margin-top:1px}
+.rp-res{text-align:center}
+.rp-val{font-weight:700}
+.rp-val.high,.rp-val.low{color:#e53e3e}
+.rp-flag{font-weight:700;color:#e53e3e;margin-left:10px;font-size:12px}
+.rp-rec{width:100%;border-collapse:collapse;margin-top:9px;page-break-inside:avoid;break-inside:avoid}
+.rp-rec th,.rp-rec td{border:1px solid #4a5568;padding:3px 5px;font-size:9.5px;text-align:left}
+.rp-rec th{font-weight:700}
+.rp-note{font-size:10px;color:#2d3748;margin-top:8px;page-break-inside:avoid;break-inside:avoid}
+.rp-note ol{padding-left:15px;margin-top:2px}
+.rp-note li{margin-bottom:2px}
+.rp-thanks{font-size:11px;font-weight:700;margin-top:10px;border-top:1px solid #cbd5e0;padding-top:5px}
+.rp-end{text-align:center;font-weight:700;font-size:11px;margin:2px 0 8px}
+.rp-signs{display:flex;justify-content:space-between;gap:16px;margin-top:14px;page-break-inside:avoid;break-inside:avoid}
+.rp-signs>div{text-align:center;flex:1}
+.rp-sign-sp{height:18px;font-family:'Segoe Script','Brush Script MT',cursive;color:#1a365d;font-size:15px}
+.rp-sign-name{font-weight:800;font-size:11.5px;border-top:1px solid #4a5568;padding-top:3px}
+.rp-sign-qual{font-size:10px;color:#4a5568}
+.rp-genline{display:flex;justify-content:space-between;font-size:9px;color:#4a5568;margin-top:7px;border-top:1px solid #cbd5e0;padding-top:4px}
+.rp-report-headline{text-align:center;font-size:15px;font-weight:800;color:#1a202c;border-bottom:2px solid #1a365d;padding:4px 0 6px;margin-bottom:6px;text-transform:uppercase}
+.rp-meta-grid{display:grid;grid-template-columns:1.45fr .55fr 1.15fr;gap:10px;border:1px solid #4a5568;padding:6px 8px;align-items:start}
+.rp-meta-left>div,.rp-meta-right>div{font-size:10.5px;line-height:1.45;min-height:15px}
+.rp-meta-left b,.rp-meta-right b{display:inline-block;min-width:94px}
+.rp-meta-left span,.rp-meta-right span{font-weight:500}
+.rp-meta-qr{text-align:center;border-left:1px solid #cbd5e0;border-right:1px solid #cbd5e0;min-height:108px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.rp-qr-caption{font-size:8px;color:#2d3748;line-height:1.2;margin-top:2px}
+.rp-meta-right{text-align:left}
+.rp-meta-right .rp-barcode{margin:2px 0 0 auto;width:168px}
+.rp-sample-id{margin-top:2px}
+.rp-test-title{text-align:center;font-size:14px;font-weight:800;color:#1a202c;margin:9px 0 4px;text-transform:uppercase;border-bottom:1px solid #1a365d;padding-bottom:3px}
+.rp-table th{border-top:0;border-bottom:1px solid #1a365d;padding:5px 7px;text-align:left;font-size:10.5px;color:#1a202c}
+.rp-table td{padding:4px 7px;border-bottom:1px solid #e2e8f0;font-size:10.5px;vertical-align:top}
+.rp-disclaimer{border:1px solid #4a5568;padding:5px 7px;font-size:8.5px;line-height:1.35;margin-top:7px;text-align:center}
+.rp-footer{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;margin-top:10px;font-size:8.5px;min-height:38px}
+.rp-footer-center{text-align:center;color:#4a5568}
+.rp-footer-right{text-align:right;font-size:9px}
+.rp-overall{margin-top:7px}
+`;
+
+// Deterministic barcode (SVG, renders in every browser + PDF)
+function barcodeSVG(seed){
+  const str=String(seed||'000000');
+  let h=2166136261>>>0;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  const rnd=()=>{ h^=h<<13; h>>>=0; h^=h>>17; h^=h<<5; h>>>=0; return h/4294967296; };
+  const W=168, barH=30, H=barH+13;
+  let x=7, bars='';
+  const bar=(bx,bw)=>`<rect x="${bx.toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${barH}" fill="#111"/>`;
+  // start guard
+  bars+=bar(x,2); x+=4; bars+=bar(x,1); x+=3;
+  // data bars
+  while(x<W-24){
+    const bw=1+Math.floor(rnd()*3);
+    const gap=1+Math.floor(rnd()*3);
+    if(x+bw>W-22) break;
+    bars+=bar(x,bw);
+    x+=bw+gap;
+  }
+  // end guard
+  bars+=bar(W-13,1); bars+=bar(W-9,2); bars+=bar(W-6,1);
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="shape-rendering:crispEdges"><rect width="${W}" height="${H}" fill="#fff"/>${bars}<text x="${W/2}" y="${barH+10}" text-anchor="middle" font-family="monospace" font-size="10" fill="#111">${str}</text></svg>`;
+}
+
+// Diagonal stripe decoration for the navy bar (SVG, PDF-safe)
+function stripeBars(){
+  let s='';
+  for(let i=0;i<16;i++){
+    const x=i*14;
+    s+=`<polygon points="${x},18 ${x+7},0 ${x+15},0 ${x+8},18" fill="#fff"/>`;
+  }
+  return `<svg class="rp-stripe-deco" viewBox="0 0 220 18" width="220" height="18" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">${s}</svg>`;
+}
+
+// Real, scannable QR code helpers for booking slips.
+// Encoded payload is intentionally human-readable for collection verification.
+function bookingQRText(b){
+  return [
+    'BOOKING_ID: '+String(b&&b.id||''),
+    'PATIENT_NAME: '+String(b&&b.name||'')
+  ].join('\\n');
+}
+
+function createBookingQR(container,b,size=92){
+  if(!container || typeof QRCode==='undefined') return false;
+  container.innerHTML='';
+  new QRCode(container,{
+    text: bookingQRText(b),
+    width:size,
+    height:size,
+    colorDark:'#111111',
+    colorLight:'#ffffff',
+    correctLevel:QRCode.CorrectLevel.M
+  });
+  return true;
+}
+
+async function bookingQRDataURL(b,size=100){
+  const host=document.createElement('div');
+  host.style.cssText='position:fixed;left:-10000px;top:-10000px;width:'+size+'px;height:'+size+'px;background:#fff;';
+  document.body.appendChild(host);
+  try{
+    if(!createBookingQR(host,b,size)) return null;
+    await new Promise(r=>setTimeout(r,80));
+    const canvas=host.querySelector('canvas');
+    return canvas ? canvas.toDataURL('image/png') : null;
+  }finally{
+    host.remove();
+  }
+}const METHOD_MAP=[
+  {k:['non-hdl'],v:'Calculated'},{k:['ldl'],v:'Calculated'},{k:['vldl'],v:'Calculated'},
+  {k:['cholesterol'],v:'Spectrophotometry'},{k:['triglyceride'],v:'Spectrophotometry'},{k:['hdl'],v:'Spectrophotometry'},
+  {k:['hba1c','glycated'],v:'HPLC'},{k:['hemoglobin'],v:'Photometry'},
+  {k:['wbc','leucocyte'],v:'Automated Cell Counter'},{k:['platelet'],v:'Automated Cell Counter'},
+  {k:['creatinine'],v:'Jaffe / Enzymatic'},{k:['urea'],v:'Urease'},
+  {k:['tsh','t3','t4','thyroid'],v:'CLIA'},{k:['bilirubin'],v:'Diazo'},
+  {k:['sgot','sgpt','ast','alt'],v:'IFCC'},{k:['vitamin'],v:'CLIA'},{k:['crp'],v:'Immunoturbidimetry'},{k:['esr'],v:'Westergren'}
+];
+function methodFor(name){const n=(name||'').toLowerCase();const e=METHOD_MAP.find(x=>x.k.some(k=>n.includes(k)));return e?e.v:'';}
+
+function recFor(testName){
+  const n=(testName||'').toLowerCase();
+  if(n.includes('lipid')){
+    return {title:'NLA - 2014 RECOMMENDATIONS',cols:['Total Cholesterol (mg/dL)','HDL Cholesterol (mg/dL)','LDL Cholesterol (mg/dL)','Triglycerides (mg/dL)'],rows:[
+      ['Optimal','','< 40','< 100','< 150'],['Above Optimal','< 200','','100 - 129',''],
+      ['Borderline High','200 - 239','','130 - 159','150 - 199'],['High','> 240','< 60','160 - 189','200 - 499'],['Very High','','','> 190','> 500']]};
+  }
+  return null;
+}
+function notesFor(testName){
+  const n=(testName||'').toLowerCase();
+  if(n.includes('lipid')) return [
+    'Measurements in the same patient can show physiological & analytical variations. Three serial samples 1 week apart are recommended for Total Cholesterol, Triglycerides, HDL & LDL Cholesterol.',
+    'As per NLA-2014 guidelines, all adults above the age of 20 years should be screened for lipid status. Selective screening of children above the age of 2 years with a family history of premature cardiovascular disease or those with at least one parent with high total cholesterol is recommended.'
+  ];
+  return [];
+}
+
+// ====== CENTRAL CLOUD DATA ======
+const CLOUD_DATA_KEYS=['pcp_patients','pcp_tests','pcp_invoices','pcp_reports','pcp_settings','pcp_patcounter','pcp_billcounter','pcp_bkcounter'];
+function cloudSanitizeValue(key,val){
+  if(key!=='pcp_settings') return val;
+  const x={...(val||{})};
+  // Never upload Supabase credentials to the database itself.
+  delete x.supabaseUrl; delete x.supabaseKey; delete x.supabaseEmail;
+  return x;
+}
+function save(key,val){
+  localStorage.setItem(key,JSON.stringify(val));
+  if(CLOUD_DATA_KEYS.includes(key) && cloudReady() && cloudSession()){
+    cloudSaveData(key,cloudSanitizeValue(key,val)).catch(e=>console.warn('Cloud save failed:',key,e));
+  }
+}
+
+// Default tests
+if (!tests.length) {
+  tests = [
+    {id:1,name:'CBC (Complete Blood Count)',cat:'Hematology',price:250,gst:0,tat:4,sample:'Blood',comm:10,status:'Active'},
+    {id:2,name:'Blood Sugar Fasting',cat:'Biochemistry',price:80,gst:0,tat:2,sample:'Blood',comm:10,status:'Active'},
+    {id:3,name:'Blood Sugar PP',cat:'Biochemistry',price:80,gst:0,tat:2,sample:'Blood',comm:10,status:'Active'},
+    {id:4,name:'HbA1c',cat:'Biochemistry',price:350,gst:0,tat:6,sample:'Blood',comm:10,status:'Active'},
+    {id:5,name:'Lipid Profile',cat:'Lipid Profile',price:450,gst:0,tat:6,sample:'Blood',comm:10,status:'Active'},
+    {id:6,name:'Thyroid Profile (T3,T4,TSH)',cat:'Thyroid',price:600,gst:0,tat:8,sample:'Blood',comm:10,status:'Active'},
+    {id:7,name:'Liver Function Test (LFT)',cat:'Biochemistry',price:500,gst:0,tat:6,sample:'Blood',comm:10,status:'Active'},
+    {id:8,name:'Kidney Function Test (KFT)',cat:'Biochemistry',price:500,gst:0,tat:6,sample:'Blood',comm:10,status:'Active'},
+    {id:9,name:'Urine Routine',cat:'Urine Analysis',price:100,gst:0,tat:2,sample:'Urine',comm:5,status:'Active'},
+    {id:10,name:'Widal Test',cat:'Serology',price:150,gst:0,tat:4,sample:'Blood',comm:10,status:'Active'},
+    {id:11,name:'Dengue NS1 Antigen',cat:'Serology',price:600,gst:0,tat:4,sample:'Blood',comm:10,status:'Active'},
+    {id:12,name:'Vitamin D (25-OH)',cat:'Hormone',price:800,gst:0,tat:24,sample:'Blood',comm:15,status:'Active'},
+    {id:13,name:'Vitamin B12',cat:'Hormone',price:700,gst:0,tat:24,sample:'Blood',comm:15,status:'Active'},
+    {id:14,name:'Full Body Checkup Package',cat:'Package',price:2500,gst:0,tat:24,sample:'Blood',comm:12,status:'Active'},
+    {id:15,name:'COVID-19 RT-PCR',cat:'Microbiology',price:500,gst:5,tat:24,sample:'Swab',comm:0,status:'Active'},
+  ];
+  save('pcp_tests', tests);
+}
+
+// ====== LOGIN ======
+function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const found = users.find(x => x.username === u && x.password === p);
+  if (found) {
+    loggedUser = found;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('logged-user-name').textContent = found.fullname || found.username;
+    document.getElementById('topbar-user').textContent = found.fullname || found.username;
+    updateDashboard();
+    renderPatients(); renderTests();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+function doLogout() {
+  if (!confirm('Logout?')) return;
+  loggedUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('l-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+}
+
+// ====== SIDEBAR TOGGLE ======
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ====== NAVIGATION ======
+const pages = ['dashboard','patients','bookings','tests','results','billing','invoices','gst','commission','reports','users','settings'];
+function showPage(p) {
+  pages.forEach(x => document.getElementById('page-'+x).classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const titles = {dashboard:'Dashboard',patients:'Patient Management',bookings:'Online Test Bookings',tests:'Lab Tests',results:'Lab Result Entry',billing:'New Bill',invoices:'All Invoices',gst:'GST Report',commission:'Doctor Commission',reports:'Reports',users:'User Management',settings:'Settings'};
+  document.getElementById('page-title').textContent = titles[p]||p;
+  if (p==='dashboard') updateDashboard();
+  if (p==='billing') populateBillingDropdowns();
+  if (p==='invoices') renderInvoices();
+  if (p==='gst') { generateGSTReport(); updateGSTStats(); }
+  if (p==='commission') generateCommissionReport();
+  if (p==='reports') { updateReportStats(); }
+  if (p==='settings') loadSettings();
+  if (p==='users') renderUsers();
+  if (p==='results') { populateReportBillDropdown(); renderReportsList(); }
+  if (p==='bookings') { renderBookings(); if(cloudReady()&&cloudSession()) cloudSync(true); }
+  // highlight nav
+  const ni = ['dashboard','patients','bookings','tests','results','billing','invoices','gst','commission','reports','users','settings'].indexOf(p);
+  document.querySelectorAll('.nav-item')[ni]?.classList.add('active');
+  if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
+}
+
+// ====== DATETIME ======
+function updateTime() {
+  document.getElementById('datetime').textContent = new Date().toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateTime,1000); updateTime();
+
+// ====== NOTIFY ======
+function notify(msg,type='success') {
+  const n=document.getElementById('notif');
+  n.textContent=msg; n.style.background=type==='success'?'#38a169':'#e53e3e';
+  n.style.display='block'; setTimeout(()=>n.style.display='none',3000);
+}
+
+// ====== PATIENTS ======
+function addPatient() {
+  const name=document.getElementById('p-name').value.trim();
+  const phone=document.getElementById('p-phone').value.trim();
+  if(!name||!phone){notify('Name and Phone required!','error');return;}
+  const p={
+    id:'PT'+String(patCounter).padStart(4,'0'),name,
+    age:document.getElementById('p-age').value,
+    gender:document.getElementById('p-gender').value,
+    blood:document.getElementById('p-blood').value,
+    phone,email:document.getElementById('p-email').value,
+    doctor:document.getElementById('p-doctor').value,
+    address:document.getElementById('p-address').value,
+    date:new Date().toLocaleDateString('en-IN')
+  };
+  patients.push(p); patCounter++;
+  save('pcp_patients',patients); save('pcp_patcounter',patCounter);
+  clearPatientForm(); renderPatients(); notify('✅ Patient registered!');
+  updateDoctorList();
+}
+function clearPatientForm(){['p-name','p-age','p-phone','p-email','p-doctor','p-address'].forEach(id=>document.getElementById(id).value='');document.getElementById('p-gender').value='';document.getElementById('p-blood').value='';}
+function renderPatients(){
+  const q=(document.getElementById('patient-search').value||'').toLowerCase();
+  const f=patients.filter(p=>p.name.toLowerCase().includes(q)||p.phone.includes(q)||p.id.toLowerCase().includes(q));
+  document.getElementById('patient-count-label').textContent=`(${f.length} records)`;
+  document.getElementById('patients-table').innerHTML=f.map((p,i)=>`
+    <tr><td>${i+1}</td><td><span class="badge badge-info">${p.id}</span></td>
+    <td><b>${p.name}</b></td><td>${p.age||'-'}/${p.gender||'-'}</td>
+    <td>${p.blood||'-'}</td><td>${p.phone}</td><td>${p.doctor||'-'}</td>
+    <td><button class="btn btn-primary btn-sm" onclick="billForPatient('${p.id}')">🧾</button>
+    <button class="btn btn-danger btn-sm" onclick="deletePatient('${p.id}')">🗑️</button></td></tr>`).join('')||
+  '<tr><td colspan="8" style="text-align:center;padding:25px;color:#718096;">No patients found</td></tr>';
+}
+function deletePatient(id){if(!confirm('Delete patient?'))return;patients=patients.filter(p=>p.id!==id);save('pcp_patients',patients);renderPatients();notify('Deleted');}
+function billForPatient(id){showPage('billing');setTimeout(()=>{document.getElementById('b-patient').value=id;fillPatientDetails();},100);}
+function updateDoctorList(){
+  const docs=[...new Set(patients.map(p=>p.doctor).filter(Boolean))];
+  ['doctor-list','bill-doctor-list'].forEach(id=>{
+    const dl=document.getElementById(id);
+    if(dl) dl.innerHTML=docs.map(d=>`<option value="${d}">`).join('');
+  });
+}
+
+// ====== TESTS ======
+function addTest(){
+  const name=document.getElementById('t-name').value.trim();
+  const price=document.getElementById('t-price').value;
+  if(!name||!price){notify('Test Name and Price required!','error');return;}
+  const maxId=tests.length?Math.max(...tests.map(t=>t.id)):0;
+  tests.push({id:maxId+1,name,cat:document.getElementById('t-cat').value,price:parseFloat(price),gst:parseInt(document.getElementById('t-gst').value),tat:document.getElementById('t-tat').value||24,sample:document.getElementById('t-sample').value,comm:parseFloat(document.getElementById('t-comm').value)||0,status:document.getElementById('t-status').value});
+  save('pcp_tests',tests); clearTestForm(); renderTests(); notify('✅ Test added!');
+}
+function clearTestForm(){['t-name','t-price','t-tat','t-comm'].forEach(id=>document.getElementById(id).value='');}
+function renderTests(){
+  const q=(document.getElementById('test-search').value||'').toLowerCase();
+  const cf=document.getElementById('test-cat-filter').value;
+  const f=tests.filter(t=>(t.name.toLowerCase().includes(q)||t.cat.toLowerCase().includes(q))&&(!cf||t.cat===cf));
+  // populate category filter
+  const cats=[...new Set(tests.map(t=>t.cat))];
+  const cf_el=document.getElementById('test-cat-filter');
+  const cur=cf_el.value;
+  cf_el.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+  document.getElementById('tests-table').innerHTML=f.map((t,i)=>{
+    const gstAmt=t.price*t.gst/100;
+    return`<tr><td>${i+1}</td><td><b>${t.name}</b></td><td><span class="badge badge-info">${t.cat}</span></td>
+    <td>${t.sample}</td><td>₹${t.price}</td><td>${t.gst}%</td>
+    <td>₹${(t.price+gstAmt).toFixed(2)}</td><td>${t.comm||0}%</td><td>${t.tat}h</td>
+    <td><span class="badge ${t.status==='Active'?'badge-success':'badge-danger'}">${t.status}</span></td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteTest(${t.id})">🗑️</button></td></tr>`;
+  }).join('')||'<tr><td colspan="11" style="text-align:center;padding:25px;color:#718096;">No tests</td></tr>';
+}
+function deleteTest(id){if(!confirm('Delete test?'))return;tests=tests.filter(t=>t.id!==id);save('pcp_tests',tests);renderTests();notify('Deleted');}
+
+// ====== BILLING ======
+function populateBillingDropdowns(){
+  const ps=document.getElementById('b-patient');
+  const cur=ps.value;
+  ps.innerHTML='<option value="">-- Select Patient --</option>'+patients.map(p=>`<option value="${p.id}">${p.id} - ${p.name} (${p.phone})</option>`).join('');
+  ps.value=cur;
+  document.getElementById('add-test-select').innerHTML='<option value="">-- Select Test --</option>'+tests.filter(t=>t.status==='Active').map(t=>`<option value="${t.id}">${t.name} — ₹${t.price}${t.gst?'+'+t.gst+'%GST':''}</option>`).join('');
+  document.getElementById('b-date').value=new Date().toISOString().split('T')[0];
+  updateDoctorList();
+}
+function fillPatientDetails(){
+  const p=patients.find(x=>x.id===document.getElementById('b-patient').value);
+  if(p) document.getElementById('b-doctor').value=p.doctor||'';
+}
+function addTestToBill(){
+  const tid=parseInt(document.getElementById('add-test-select').value);
+  if(!tid){notify('Select a test','error');return;}
+  const test=tests.find(t=>t.id===tid);
+  if(!test)return;
+  if(billTests.find(b=>b.id===tid)){notify('Already added!','error');return;}
+  billTests.push({...test,qty:1});
+  renderBillTests();
+}
+function renderBillTests(){
+  document.getElementById('tests-container').innerHTML=billTests.map((t,i)=>{
+    const gstAmt=(t.price*t.qty)*(t.gst/100);
+    const total=t.price*t.qty+gstAmt;
+    return`<div class="test-row">
+      <span><b>${t.name}</b></span>
+      <span><span class="badge badge-info" style="font-size:10px;">${t.cat}</span></span>
+      <span>₹${t.price}</span>
+      <span>${t.gst}%</span>
+      <span>₹${gstAmt.toFixed(2)}</span>
+      <span><b>₹${total.toFixed(2)}</b></span>
+      <span><button class="btn btn-danger btn-sm" onclick="removeTest(${i})">✕</button></span>
+    </div>`;
+  }).join('')||'<p style="padding:13px;color:#718096;font-size:13px;">No tests added</p>';
+  calcTotal();
+}
+function removeTest(i){billTests.splice(i,1);renderBillTests();}
+function calcTotal(){
+  const disc=parseFloat(document.getElementById('b-discount').value)||0;
+  let sub=0,gstTotal=0;
+  billTests.forEach(t=>{sub+=t.price*t.qty;gstTotal+=(t.price*t.qty)*(t.gst/100);});
+  const discAmt=sub*disc/100;
+  const grand=sub-discAmt+gstTotal;
+  document.getElementById('subtotal').textContent='₹'+sub.toFixed(2);
+  document.getElementById('discount-val').textContent='₹'+discAmt.toFixed(2);
+  document.getElementById('gst-val').textContent='₹'+gstTotal.toFixed(2);
+  document.getElementById('grand-total').textContent='₹'+grand.toFixed(2);
+}
+function generateBill(){
+  const pid=document.getElementById('b-patient').value;
+  if(!pid){notify('Select a patient!','error');return;}
+  if(!billTests.length){notify('Add at least one test!','error');return;}
+  const patient=patients.find(p=>p.id===pid);
+  const disc=parseFloat(document.getElementById('b-discount').value)||0;
+  let sub=0,gstTotal=0;
+  billTests.forEach(t=>{sub+=t.price*t.qty;gstTotal+=(t.price*t.qty)*(t.gst/100);});
+  const discAmt=sub*disc/100;
+  const grand=sub-discAmt+gstTotal;
+  billCounter++; save('pcp_billcounter',billCounter);
+  const inv={
+    billNo:'INV-'+billCounter,patient,tests:[...billTests],
+    subtotal:sub,discount:disc,discountAmt:discAmt,gstTotal,total:grand,
+    payment:document.getElementById('b-payment').value,
+    doctor:document.getElementById('b-doctor').value,
+    bookingId:pendingBookingId||'',
+    notes:document.getElementById('b-notes').value,
+    date:document.getElementById('b-date').value,
+    status:'Paid',created:new Date().toISOString()
+  };
+  invoices.push(inv); save('pcp_invoices',invoices);
+  if(pendingBookingId){
+    const pb=bookings.find(x=>x.id===pendingBookingId);
+    if(pb){ pb.billNo=inv.billNo; pb.status='Confirmed'; save('pcp_bookings',bookings); renderBookings(); if(cloudReady()&&cloudSession()) cloudUpdateBooking(pb.id,{bill_no:inv.billNo,status:'Confirmed'}).catch(()=>{}); }
+    pendingBookingId=null;
+  }
+  currentInvoice=inv;
+  document.getElementById('invoice-content').innerHTML=buildInvoiceHTML(inv);
+  document.getElementById('invoice-section').style.display='block';
+  document.getElementById('invoice-section').scrollIntoView({behavior:'smooth'});
+  billTests=[]; renderBillTests();
+  notify('✅ Bill '+inv.billNo+' generated!');
+}
+function clearBillingForm(){document.getElementById('b-patient').value='';document.getElementById('b-discount').value='0';document.getElementById('b-notes').value='';billTests=[];renderBillTests();document.getElementById('invoice-section').style.display='none';}
+
+function buildInvoiceHTML(inv,forPrint=false){
+  const s=settings;
+  const testRows=inv.tests.map(t=>{
+    const gstAmt=(t.price*t.qty)*(t.gst/100);
+    return`<tr ${t.gst>0?'class="gst-row"':''}><td>${t.name}</td><td>${t.cat}</td><td>${t.sample}</td><td>${t.qty}</td><td style="text-align:right">₹${(t.price*t.qty).toFixed(2)}</td><td style="text-align:right">${t.gst}%</td><td style="text-align:right">₹${gstAmt.toFixed(2)}</td><td style="text-align:right"><b>₹${(t.price*t.qty+gstAmt).toFixed(2)}</b></td></tr>`;
+  }).join('');
+  return`<div class="inv-header">
+    <div class="inv-logo"><h2>🔬 ${s.labname||'PathoCare Diagnostics'}</h2>
+    <p>${s.address||''} ${s.city?'| '+s.city:''}</p>
+    <p>${s.phone?'📞 '+s.phone:''} ${s.email?'| ✉️ '+s.email:''}</p>
+    ${s.reg?'<p>Reg: '+s.reg+'</p>':''} ${s.gst?'<p>GSTIN: '+s.gst+'</p>':''}</div>
+    <div class="inv-no"><div style="font-size:11px;color:#718096;">INVOICE</div>
+    <div class="number">${inv.billNo}</div>
+    <div style="font-size:12px;color:#4a5568;">Date: ${new Date(inv.date).toLocaleDateString('en-IN')}</div>
+    <span class="badge ${inv.status==='Paid'?'badge-success':'badge-warning'}">${inv.status}</span></div></div>
+  <hr class="inv-divider">
+  <div class="inv-patient">
+    <div><div class="inv-section-label">Patient</div>
+    <div class="inv-patient-name">${inv.patient.name}</div>
+    <div class="inv-patient-detail">Age: ${inv.patient.age||'-'} | ${inv.patient.gender||'-'} | ${inv.patient.blood||'-'}</div>
+    <div class="inv-patient-detail">📞 ${inv.patient.phone}</div>
+    <div class="inv-patient-detail">ID: ${inv.patient.id}</div></div>
+    <div><div class="inv-section-label">Bill Info</div>
+    <div class="inv-patient-detail">💳 ${inv.payment}</div>
+    ${inv.doctor?'<div class="inv-patient-detail">👨‍⚕️ Ref: '+inv.doctor+'</div>':''}
+    ${inv.notes?'<div class="inv-patient-detail">📝 '+inv.notes+'</div>':''}</div></div>
+  <table class="inv-table"><thead><tr><th>Test</th><th>Category</th><th>Sample</th><th>Qty</th><th>Amount</th><th>GST%</th><th>GST Amt</th><th>Total</th></tr></thead>
+  <tbody>${testRows}</tbody></table>
+  <div class="inv-total-box"><table class="inv-total-table">
+    <tr><td>Subtotal</td><td style="text-align:right">₹${inv.subtotal.toFixed(2)}</td></tr>
+    <tr><td>Discount (${inv.discount}%)</td><td style="text-align:right">-₹${inv.discountAmt.toFixed(2)}</td></tr>
+    <tr><td>GST</td><td style="text-align:right">₹${(inv.gstTotal||0).toFixed(2)}</td></tr>
+    <tr class="inv-grand"><td>GRAND TOTAL</td><td style="text-align:right">₹${inv.total.toFixed(2)}</td></tr>
+  </table></div>
+  <div class="inv-footer">${s.footer}</div>`;
+}
+
+function printInvoice(){window.print();}
+function printModal(){window.print();}
+
+function downloadPDF(inv){
+  const i=inv||currentInvoice;
+  if(!i){notify('No invoice','error');return;}
+  generateInvoicePDF(i);
+}
+function downloadModalPDF(){
+  const billNo=document.getElementById('modal-invoice-content').querySelector('.number')?.textContent;
+  const inv=invoices.find(i=>i.billNo===billNo);
+  if(inv) generateInvoicePDF(inv);
+}
+
+function generateInvoicePDF(inv){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const s=settings;
+  doc.setFontSize(18); doc.setTextColor(26,54,93);
+  doc.text(s.labname||'PathoCare Diagnostics',15,20);
+  doc.setFontSize(9); doc.setTextColor(100);
+  doc.text(s.address||'',15,27);
+  doc.text((s.phone?'Ph: '+s.phone:'')+' '+(s.email?'Email: '+s.email:''),15,32);
+  if(s.gst) doc.text('GSTIN: '+s.gst,15,37);
+  doc.setFontSize(13); doc.setTextColor(49,130,206);
+  doc.text('INVOICE: '+inv.billNo,140,20);
+  doc.setFontSize(9); doc.setTextColor(80);
+  doc.text('Date: '+new Date(inv.date).toLocaleDateString('en-IN'),140,27);
+  doc.text('Status: '+inv.status,140,32);
+  doc.line(15,42,195,42);
+  doc.setFontSize(10); doc.setTextColor(26,54,93);
+  doc.text('Patient: '+inv.patient.name,15,50);
+  doc.setFontSize(9); doc.setTextColor(80);
+  doc.text('ID: '+inv.patient.id+' | Age: '+(inv.patient.age||'-')+' | Gender: '+(inv.patient.gender||'-'),15,56);
+  doc.text('Phone: '+inv.patient.phone,15,62);
+  doc.text('Payment: '+inv.payment+(inv.doctor?' | Ref Dr: '+inv.doctor:''),140,50);
+  const rows=inv.tests.map(t=>{
+    const ga=(t.price*t.qty)*(t.gst/100);
+    return[t.name,t.cat,String(t.qty),'₹'+(t.price*t.qty).toFixed(2),t.gst+'%','₹'+ga.toFixed(2),'₹'+(t.price*t.qty+ga).toFixed(2)];
+  });
+  doc.autoTable({startY:70,head:[['Test Name','Category','Qty','Amount','GST%','GST Amt','Total']],body:rows,
+    headStyles:{fillColor:[26,54,93],fontSize:8},bodyStyles:{fontSize:8},
+    columnStyles:{0:{cellWidth:55}}});
+  const y=doc.lastAutoTable.finalY+8;
+  doc.setFontSize(9); doc.text('Subtotal: ₹'+inv.subtotal.toFixed(2),130,y);
+  doc.text('Discount ('+inv.discount+'%): -₹'+inv.discountAmt.toFixed(2),130,y+5);
+  doc.text('GST: ₹'+(inv.gstTotal||0).toFixed(2),130,y+10);
+  doc.setFontSize(12); doc.setTextColor(26,54,93);
+  doc.text('TOTAL: ₹'+inv.total.toFixed(2),130,y+18);
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text(s.footer||'Thank you',15,285);
+  doc.save(inv.billNo+'.pdf');
+  notify('✅ PDF downloaded!');
+}
+
+function whatsappShare(){
+  const pid=document.getElementById('b-patient').value;
+  const p=patients.find(x=>x.id===pid);
+  if(!p||!p.phone){notify('No patient phone','error');return;}
+  const msg=`Dear ${p.name}, Your lab bill ${currentInvoice?.billNo||''} of ₹${currentInvoice?.total?.toFixed(2)||''} has been generated at ${settings.labname||'our lab'}. Payment: ${currentInvoice?.payment||''}. Thank you!`;
+  window.open('https://wa.me/91'+p.phone+'?text='+encodeURIComponent(msg));
+}
+
+// ====== INVOICES ======
+function renderInvoices(){
+  const q=(document.getElementById('invoice-search').value||'').toLowerCase();
+  const sf=document.getElementById('inv-status-filter').value;
+  const df=document.getElementById('inv-date-from').value;
+  const dt=document.getElementById('inv-date-to').value;
+  const f=invoices.filter(inv=>(inv.billNo.toLowerCase().includes(q)||inv.patient.name.toLowerCase().includes(q))&&(!sf||inv.status===sf)&&(!df||inv.date>=df)&&(!dt||inv.date<=dt)).reverse();
+  document.getElementById('invoices-table').innerHTML=f.map(inv=>`
+    <tr><td><b>${inv.billNo}</b></td>
+    <td>${inv.patient.name}<br><small style="color:#718096;">${inv.patient.phone}</small></td>
+    <td>${inv.tests.length} test(s)</td>
+    <td>₹${inv.subtotal.toFixed(2)}</td>
+    <td>₹${(inv.gstTotal||0).toFixed(2)}</td>
+    <td>${inv.discount}%</td>
+    <td><b>₹${inv.total.toFixed(2)}</b></td>
+    <td>${inv.payment}</td>
+    <td><span class="badge ${inv.status==='Paid'?'badge-success':inv.status==='Pending'?'badge-warning':'badge-danger'}">${inv.status}</span></td>
+    <td>${new Date(inv.date).toLocaleDateString('en-IN')}</td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-primary btn-sm" onclick="viewInvoice('${inv.billNo}')">👁️</button>
+      <button class="btn btn-success btn-sm" onclick="downloadPDF(invoices.find(i=>i.billNo==='${inv.billNo}'))">⬇️</button>
+      <button class="btn btn-purple btn-sm" onclick="openResultEntry('${inv.billNo}')" title="Result Entry">📋</button>
+      <button class="btn btn-warning btn-sm" onclick="toggleStatus('${inv.billNo}')">⚡</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteInvoice('${inv.billNo}')">🗑️</button>
+    </td></tr>`).join('')||'<tr><td colspan="11" style="text-align:center;padding:25px;color:#718096;">No invoices found</td></tr>';
+}
+function viewInvoice(billNo){
+  const inv=invoices.find(i=>i.billNo===billNo);
+  if(!inv)return;
+  document.getElementById('modal-invoice-content').innerHTML=buildInvoiceHTML(inv);
+  currentInvoice=inv;
+  document.getElementById('view-modal').classList.add('active');
+}
+function closeModal(){document.getElementById('view-modal').classList.remove('active');}
+function toggleStatus(billNo){
+  const inv=invoices.find(i=>i.billNo===billNo);
+  if(!inv)return;
+  inv.status=inv.status==='Paid'?'Pending':'Paid';
+  save('pcp_invoices',invoices); renderInvoices(); notify('Status: '+inv.status);
+}
+function deleteInvoice(billNo){
+  if(!confirm('Delete invoice '+billNo+'?'))return;
+  invoices=invoices.filter(i=>i.billNo!==billNo);
+  save('pcp_invoices',invoices); renderInvoices(); notify('Deleted');
+}
+
+// ====== GST ======
+function updateGSTStats(){
+  let g5=0,g12=0,gAll=0;
+  invoices.forEach(inv=>{
+    inv.tests.forEach(t=>{
+      const ga=(t.price*t.qty)*(t.gst/100);
+      gAll+=ga; if(t.gst===5)g5+=ga; if(t.gst===12)g12+=ga;
+    });
+  });
+  document.getElementById('gst-total').textContent='₹'+gAll.toFixed(0);
+  document.getElementById('gst-5').textContent='₹'+g5.toFixed(0);
+  document.getElementById('gst-12').textContent='₹'+g12.toFixed(0);
+}
+function generateGSTReport(){
+  const from=document.getElementById('gst-from').value;
+  const to=document.getElementById('gst-to').value;
+  let filtered=invoices.filter(i=>(!from||i.date>=from)&&(!to||i.date<=to));
+  let totalGST=0;
+  const rows=[];
+  filtered.forEach(inv=>{
+    inv.tests.forEach(t=>{
+      if(t.gst>0){
+        const ga=(t.price*t.qty)*(t.gst/100);
+        totalGST+=ga;
+        rows.push(`<tr><td><b>${inv.billNo}</b></td><td>${new Date(inv.date).toLocaleDateString('en-IN')}</td><td>${inv.patient.name}</td><td>₹${(t.price*t.qty).toFixed(2)}</td><td>${t.gst}%</td><td><b>₹${ga.toFixed(2)}</b></td><td>₹${(t.price*t.qty+ga).toFixed(2)}</td></tr>`);
+      }
+    });
+  });
+  document.getElementById('gst-table').innerHTML=rows.join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:#718096;">No GST transactions</td></tr>';
+  document.getElementById('gst-report-total').innerHTML=`Total GST Collected: <span style="color:#319795;">₹${totalGST.toFixed(2)}</span>`;
+}
+function downloadGSTPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  doc.setFontSize(16); doc.setTextColor(26,54,93);
+  doc.text('GST Report - '+(settings.labname||'Lab'),15,20);
+  doc.setFontSize(9); doc.setTextColor(100); doc.text('Generated: '+new Date().toLocaleDateString('en-IN'),15,28);
+  const rows=[];
+  invoices.forEach(inv=>inv.tests.forEach(t=>{if(t.gst>0){const ga=(t.price*t.qty)*(t.gst/100);rows.push([inv.billNo,new Date(inv.date).toLocaleDateString('en-IN'),inv.patient.name,'₹'+(t.price*t.qty).toFixed(2),t.gst+'%','₹'+ga.toFixed(2),'₹'+(t.price*t.qty+ga).toFixed(2)])}}));
+  doc.autoTable({startY:35,head:[['Bill No','Date','Patient','Taxable','GST%','GST Amt','Total']],body:rows,headStyles:{fillColor:[26,54,93],fontSize:8},bodyStyles:{fontSize:8}});
+  doc.save('GST_Report.pdf'); notify('✅ GST PDF downloaded!');
+}
+
+// ====== COMMISSION ======
+function generateCommissionReport(){
+  const from=document.getElementById('comm-from').value;
+  const to=document.getElementById('comm-to').value;
+  const filtered=invoices.filter(i=>(!from||i.date>=from)&&(!to||i.date<=to)&&i.doctor);
+  // Group by doctor
+  const docMap={};
+  filtered.forEach(inv=>{
+    if(!inv.doctor)return;
+    if(!docMap[inv.doctor])docMap[inv.doctor]={bills:0,revenue:0,commission:0,patients:new Set()};
+    docMap[inv.doctor].bills++;
+    docMap[inv.doctor].revenue+=inv.total;
+    docMap[inv.doctor].patients.add(inv.patient.id);
+    // calc commission per test
+    let comm=0;
+    inv.tests.forEach(t=>{comm+=(t.price*t.qty)*(t.comm||0)/100;});
+    docMap[inv.doctor].commission+=comm;
+  });
+  let totalComm=0;
+  document.getElementById('comm-table').innerHTML=Object.entries(docMap).map(([doc,d])=>{
+    totalComm+=d.commission;
+    return`<tr><td><b>Dr. ${doc}</b></td><td>${d.patients.size}</td><td>${d.bills}</td>
+    <td>₹${d.revenue.toFixed(2)}</td><td>${settings.comm||10}%</td>
+    <td><b style="color:#805ad5;">₹${d.commission.toFixed(2)}</b></td>
+    <td><span class="badge badge-warning">Due</span></td></tr>`;
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:25px;color:#718096;">No commission data</td></tr>';
+  document.getElementById('comm-total').innerHTML='Total Commission Payable: <span style="color:#805ad5;">₹'+totalComm.toFixed(2)+'</span>';
+  // Detail table
+  document.getElementById('comm-detail-table').innerHTML=filtered.map(inv=>{
+    let comm=0; inv.tests.forEach(t=>{comm+=(t.price*t.qty)*(t.comm||0)/100;});
+    return`<tr><td><b>${inv.billNo}</b></td><td>${new Date(inv.date).toLocaleDateString('en-IN')}</td><td>${inv.patient.name}</td><td>Dr. ${inv.doctor}</td><td>₹${inv.total.toFixed(2)}</td><td><b style="color:#805ad5;">₹${comm.toFixed(2)}</b></td></tr>`;
+  }).join('')||'<tr><td colspan="6" style="text-align:center;padding:25px;color:#718096;">No data</td></tr>';
+}
+function downloadCommPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  doc.setFontSize(16); doc.setTextColor(128,90,213);
+  doc.text('Doctor Commission Report',15,20);
+  doc.setFontSize(9); doc.setTextColor(100); doc.text(settings.labname||'Lab',15,28);
+  const rows=invoices.filter(i=>i.doctor).map(inv=>{let c=0;inv.tests.forEach(t=>{c+=(t.price*t.qty)*(t.comm||0)/100;});return[inv.billNo,new Date(inv.date).toLocaleDateString('en-IN'),inv.patient.name,'Dr. '+inv.doctor,'₹'+inv.total.toFixed(2),'₹'+c.toFixed(2)];});
+  doc.autoTable({startY:35,head:[['Bill No','Date','Patient','Doctor','Bill Amt','Commission']],body:rows,headStyles:{fillColor:[128,90,213],fontSize:8},bodyStyles:{fontSize:8}});
+  doc.save('Commission_Report.pdf'); notify('✅ Commission PDF downloaded!');
+}
+
+// ====== REPORTS ======
+function updateReportStats(){
+  document.getElementById('r-bills').textContent=invoices.length;
+  document.getElementById('r-rev').textContent='₹'+invoices.reduce((s,i)=>s+i.total,0).toFixed(0);
+  document.getElementById('r-pat').textContent=patients.length;
+  document.getElementById('r-test-cnt').textContent=invoices.reduce((s,i)=>s+i.tests.reduce((a,t)=>a+t.qty,0),0);
+}
+function generateReport(){
+  const from=document.getElementById('r-from').value;
+  const to=document.getElementById('r-to').value;
+  const f=invoices.filter(i=>(!from||i.date>=from)&&(!to||i.date<=to));
+  document.getElementById('report-table').innerHTML=f.map(inv=>`
+    <tr><td><b>${inv.billNo}</b></td><td>${new Date(inv.date).toLocaleDateString('en-IN')}</td>
+    <td>${inv.patient.name}</td><td>${inv.tests.map(t=>t.name).join(', ')}</td>
+    <td>₹${(inv.gstTotal||0).toFixed(2)}</td><td><b>₹${inv.total.toFixed(2)}</b></td>
+    <td>${inv.payment}</td>
+    <td><span class="badge ${inv.status==='Paid'?'badge-success':'badge-warning'}">${inv.status}</span></td></tr>`).join('')||
+  '<tr><td colspan="8" style="text-align:center;padding:20px;color:#718096;">No data</td></tr>';
+  const total=f.reduce((s,i)=>s+i.total,0);
+  document.getElementById('report-total').innerHTML=`Total Revenue: <b>₹${total.toFixed(2)}</b>`;
+}
+function downloadReportPDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'landscape'});
+  doc.setFontSize(16); doc.setTextColor(26,54,93);
+  doc.text('Revenue Report - '+(settings.labname||'Lab'),15,20);
+  doc.setFontSize(9); doc.setTextColor(100); doc.text('Generated: '+new Date().toLocaleDateString('en-IN'),15,28);
+  const rows=invoices.map(inv=>[inv.billNo,new Date(inv.date).toLocaleDateString('en-IN'),inv.patient.name,inv.tests.map(t=>t.name).join(', '),'₹'+(inv.gstTotal||0).toFixed(2),'₹'+inv.total.toFixed(2),inv.payment,inv.status]);
+  doc.autoTable({startY:35,head:[['Bill No','Date','Patient','Tests','GST','Amount','Payment','Status']],body:rows,headStyles:{fillColor:[26,54,93],fontSize:7},bodyStyles:{fontSize:7}});
+  doc.save('Revenue_Report.pdf'); notify('✅ Report PDF downloaded!');
+}
+
+// ====== USERS ======
+function addUser(){
+  const u=document.getElementById('u-name').value.trim();
+  const p=document.getElementById('u-pass').value;
+  if(!u||!p){notify('Username & Password required!','error');return;}
+  if(users.find(x=>x.username===u)){notify('Username exists!','error');return;}
+  users.push({username:u,password:p,role:document.getElementById('u-role').value,fullname:document.getElementById('u-fullname').value});
+  save('pcp_users',users); renderUsers();
+  ['u-name','u-pass','u-fullname'].forEach(id=>document.getElementById(id).value='');
+  notify('✅ User added!');
+}
+function renderUsers(){
+  document.getElementById('users-table').innerHTML=users.map((u,i)=>`
+    <tr><td>${i+1}</td><td><b>${u.username}</b></td><td>${u.fullname||'-'}</td>
+    <td><span class="badge ${u.role==='admin'?'badge-danger':u.role==='accountant'?'badge-purple':'badge-info'}">${u.role}</span></td>
+    <td>${u.username!=='admin'?'<button class="btn btn-danger btn-sm" onclick="deleteUser(\''+u.username+'\')">🗑️</button>':'<span style="color:#a0aec0;font-size:12px;">Protected</span>'}</td></tr>`).join('');
+}
+function deleteUser(u){if(!confirm('Delete user '+u+'?'))return;users=users.filter(x=>x.username!==u);save('pcp_users',users);renderUsers();notify('Deleted');}
+
+// ====== SETTINGS ======
+const SETTING_KEYS=['labname','phone','address','email','reg','gst','city','comm','tagline','website','sampleAt','technician','technicianQual','pathologist1','pathologist1Qual','pathologist2','pathologist2Qual','supportName','supportPhone','supportEmail','bookingWhatsapp','supabaseUrl','supabaseKey','supabaseEmail','footer'];
+function loadSettings(){
+  SETTING_KEYS.forEach(k=>{
+    const el=document.getElementById('s-'+k); if(el) el.value=settings[k]||'';
+  });
+}
+function saveSettings(){
+  SETTING_KEYS.forEach(k=>{
+    const el=document.getElementById('s-'+k); if(el) settings[k]=el.value;
+  });
+  save('pcp_settings',settings);
+  document.getElementById('lab-name-sidebar').textContent=settings.labname||'Lab';
+  const ln=document.getElementById('login-labname'); if(ln) ln.textContent=settings.labname||'Laboratory';
+  renderSupport();
+  updateCloudBadge();
+  notify('✅ Settings saved!');
+}
+
+function renderSupport(){
+  const s=settings;
+  const parts=[];
+  if(s.supportName) parts.push('<b>'+s.supportName+'</b>');
+  if(s.supportPhone) parts.push('📞 '+s.supportPhone);
+  if(s.supportEmail) parts.push('✉️ '+s.supportEmail);
+  const line=parts.join('<br>');
+  const ls=document.getElementById('login-support'); if(ls) ls.innerHTML=line;
+  const sb=document.getElementById('sidebar-support'); if(sb) sb.innerHTML=line;
+}
+
+// ====== DASHBOARD ======
+function updateDashboard(){
+  const today=new Date().toISOString().split('T')[0];
+  const todayInv=invoices.filter(i=>i.date===today);
+  document.getElementById('d-patients').textContent=patients.length;
+  document.getElementById('d-today-bills').textContent=todayInv.length;
+  document.getElementById('d-today-rev').textContent='₹'+todayInv.reduce((s,i)=>s+i.total,0).toFixed(0);
+  document.getElementById('d-pending').textContent=invoices.filter(i=>i.status==='Pending').length;
+  document.getElementById('d-total-rev').textContent='₹'+invoices.reduce((s,i)=>s+i.total,0).toFixed(0);
+  const totalGST=invoices.reduce((s,i)=>s+(i.gstTotal||0),0);
+  document.getElementById('d-total-gst').textContent='₹'+totalGST.toFixed(0);
+  // commission
+  let comm=0;
+  invoices.forEach(inv=>inv.tests.forEach(t=>{comm+=(t.price*t.qty)*(t.comm||0)/100;}));
+  document.getElementById('d-comm').textContent='₹'+comm.toFixed(0);
+  document.getElementById('d-tests-count').textContent=invoices.reduce((s,i)=>s+i.tests.reduce((a,t)=>a+t.qty,0),0);
+  // bar chart
+  const months=[]; const now=new Date();
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({label:d.toLocaleString('default',{month:'short'}),y:d.getFullYear(),m:d.getMonth()});}
+  const maxR=Math.max(1,...months.map(mo=>invoices.filter(i=>{const d=new Date(i.date);return d.getMonth()===mo.m&&d.getFullYear()===mo.y;}).reduce((s,i)=>s+i.total,0)));
+  document.getElementById('dash-chart').innerHTML=months.map(mo=>{
+    const r=invoices.filter(i=>{const d=new Date(i.date);return d.getMonth()===mo.m&&d.getFullYear()===mo.y;}).reduce((s,i)=>s+i.total,0);
+    const h=Math.max(4,Math.round((r/maxR)*100));
+    return`<div class="bar-wrap"><div class="bar" style="height:${h}px" title="₹${r.toFixed(0)}"></div><div class="bar-label">${mo.label}</div></div>`;
+  }).join('');
+  // top tests
+  const tc={};
+  invoices.forEach(inv=>inv.tests.forEach(t=>{tc[t.name]=(tc[t.name]||0)+t.qty;}));
+  const top=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('top-tests').innerHTML=top.map(([n,c])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f4f8;font-size:12px;"><span>${n}</span><span class="badge badge-info">${c}x</span></div>`).join('')||'<p style="color:#718096;font-size:12px;">No data yet</p>';
+  // recent
+  document.getElementById('dash-recent').innerHTML=[...invoices].reverse().slice(0,6).map(inv=>`
+    <tr><td><b>${inv.billNo}</b></td><td>${inv.patient.name}</td><td>${inv.tests.length}</td>
+    <td>₹${(inv.gstTotal||0).toFixed(2)}</td><td><b>₹${inv.total.toFixed(2)}</b></td>
+    <td><span class="badge ${inv.status==='Paid'?'badge-success':'badge-warning'}">${inv.status}</span></td>
+    <td>${new Date(inv.date).toLocaleDateString('en-IN')}</td></tr>`).join('')||
+  '<tr><td colspan="7" style="text-align:center;padding:20px;color:#718096;">No bills yet</td></tr>';
+}
+
+// ====== LAB RESULT ENTRY ======
+function populateReportBillDropdown(){
+  const el=document.getElementById('res-bill');
+  if(!el)return;
+  const cur=el.value;
+  el.innerHTML='<option value="">-- Select Bill --</option>'+[...invoices].reverse().map(i=>`<option value="${i.billNo}">${i.billNo} - ${i.patient.name} (${i.patient.phone})</option>`).join('');
+  el.value=cur;
+  if(!document.getElementById('res-date').value) document.getElementById('res-date').value=new Date().toISOString().split('T')[0];
+}
+
+function defaultParamsFor(name){
+  const n=(name||'').toLowerCase();
+  const entry=PARAM_LIB.find(e=>e.match.some(m=>n.includes(m)));
+  const list=entry?entry.params:[['Result','','']];
+  return list.map(p=>({name:p[0],result:'',unit:p[1]||'',range:p[2]||''}));
+}
+
+function paramRowHTML(p){
+  const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  return `<div class="res-row" data-flag="${esc(p.flag||'')}">
+    <input class="p-name" value="${esc(p.name)}" placeholder="Parameter">
+    <input class="p-result" value="${esc(p.result)}" placeholder="Result" oninput="evalRow(this)">
+    <input class="p-unit" value="${esc(p.unit)}" placeholder="Unit">
+    <input class="p-range" value="${esc(p.range)}" placeholder="Normal Range" oninput="evalRow(this.closest('.res-row').querySelector('.p-result'))">
+    <span class="res-flag"><span class="p-flag"></span></span>
+    <button class="btn btn-danger btn-sm res-del" onclick="this.closest('.res-row').remove()">✕</button>
+  </div>`;
+}
+
+// Parse a reference range string into a comparable rule
+function parseRange(range){
+  const r=String(range||'').replace(/,/g,'').trim();
+  let m;
+  if((m=r.match(/^([\d.]+)\s*[-\u2013]\s*([\d.]+)$/))) return {type:'between',lo:parseFloat(m[1]),hi:parseFloat(m[2])};
+  if((m=r.match(/^<=\s*([\d.]+)$/))||(m=r.match(/^<\s*([\d.]+)$/))) return {type:'lt',v:parseFloat(m[1])};
+  if((m=r.match(/^>=\s*([\d.]+)$/))||(m=r.match(/^>\s*([\d.]+)$/))) return {type:'gt',v:parseFloat(m[1])};
+  return null;
+}
+
+function flagText(f){ return f==='H'?'HIGH':f==='L'?'LOW':f==='A'?'ABNORMAL':f==='N'?'Normal':'-'; }
+function flagBadge(f){
+  if(f==='H')return '<span style="color:#c53030;font-weight:700;">\u25b2 HIGH</span>';
+  if(f==='L')return '<span style="color:#2b6cb0;font-weight:700;">\u25bc LOW</span>';
+  if(f==='A')return '<span style="color:#c53030;font-weight:700;">ABNORMAL</span>';
+  if(f==='N')return '<span style="color:#2f855a;font-weight:600;">Normal</span>';
+  return '-';
+}
+
+// Auto-evaluate a result against its reference range -> HIGH / LOW / ABNORMAL / NORMAL
+function evalRow(input){
+  if(!input) return;
+  const row=input.closest('.res-row');
+  if(!row) return;
+  const res=(row.querySelector('.p-result').value||'').trim();
+  const range=(row.querySelector('.p-range').value||'').trim();
+  const flagCell=row.querySelector('.p-flag');
+  let flag='';
+  if(res){
+    const num=parseFloat(res.replace(/,/g,''));
+    const rr=parseRange(range);
+    if(rr && !isNaN(num)){
+      if(rr.type==='between') flag = num<rr.lo ? 'L' : (num>rr.hi ? 'H' : 'N');
+      else if(rr.type==='lt') flag = num>=rr.v ? 'H' : 'N';
+      else if(rr.type==='gt') flag = num<=rr.v ? 'L' : 'N';
+    } else if(range && /[a-zA-Z]/.test(range)){
+      flag = (res.toLowerCase()===(range.match(/[a-zA-Z][a-zA-Z ]+/)||[''])[0].trim().toLowerCase()) ? 'N' : 'A';
+    }
+  }
+  row.dataset.flag=flag;
+  const abnormal=(flag==='H'||flag==='L'||flag==='A');
+  row.classList.toggle('abnormal',abnormal);
+  const resEl=row.querySelector('.p-result');
+  resEl.style.color=abnormal?'#c53030':'#2d3748';
+  resEl.style.fontWeight=abnormal?'700':'400';
+  if(flagCell){
+    flagCell.textContent = flag==='H'?'HIGH':flag==='L'?'LOW':flag==='A'?'ABNORM':flag==='N'?'NORMAL':'';
+    flagCell.className='flag '+(flag==='H'||flag==='A'?'flag-high':flag==='L'?'flag-low':flag==='N'?'flag-normal':'');
+  }
+}
+
+function addParamRow(btn){
+  const body=btn.closest('.res-test-block').querySelector('.params-body');
+  body.insertAdjacentHTML('beforeend', paramRowHTML({name:'',result:'',unit:'',range:''}));
+}
+
+function loadBillForReport(){
+  const billNo=document.getElementById('res-bill').value;
+  if(!billNo){notify('Select a bill first','error');return;}
+  const inv=invoices.find(i=>i.billNo===billNo);
+  if(!inv){notify('Bill not found','error');return;}
+  const existing=labReports[billNo];
+  const status=existing?.status||'Draft';
+  const locked=status!=='Draft';
+  const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const statusClass=status==='Verified'?'status-verified':status==='Printed'?'status-printed':'status-draft';
+  const area=document.getElementById('res-entry-area');
+  area.style.display='block';
+  area.innerHTML=`
+    <div class="card" style="border-left:4px solid #805ad5;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div><div style="font-weight:700;color:#1a365d;">${inv.billNo} — ${inv.patient.name}</div>
+          <div style="font-size:12px;color:#718096;">${inv.tests.length} test(s) | ${inv.patient.phone} | ${inv.patient.age||'-'}/${inv.patient.gender||'-'}</div></div>
+        <span class="status-badge ${statusClass}">${status.toUpperCase()}</span>
+      </div>
+      ${locked?`<div style="margin-top:8px;font-size:12px;color:#276749;background:#f0fff4;border-radius:6px;padding:7px 10px;">✔️ Verified by <b>Dr. ${esc(existing.verified||'')}</b>${existing.verifiedAt?' on '+fmtDateTime(existing.verifiedAt):''}. Report is locked — reopen as Draft to edit.</div>`:''}
+      <div class="btn-group" style="margin-top:12px;">${reportActionsHTML(locked)}</div>
+    </div>` +
+    inv.tests.map(t=>{
+      const saved=existing?.tests?.find(x=>x.name===t.name);
+      const params=saved?saved.params:defaultParamsFor(t.name);
+      const remark=saved?(saved.remark||''):aboutFor(t.name);
+      return `<div class="card res-test-block" data-test="${esc(t.name)}" data-cat="${esc(t.cat)}">
+        <div class="card-title">🧪 ${t.name} <span class="badge badge-purple">${t.cat}</span> <span style="font-size:11px;color:#718096;font-weight:400;">Sample: ${t.sample}</span></div>
+        <div class="res-row res-header"><span>Parameter</span><span>Result</span><span>Unit</span><span>Normal Range</span><span style="text-align:center;">Flag</span><span></span></div>
+        <div class="params-body">${params.map(p=>paramRowHTML(p)).join('')}</div>
+        <div class="btn-group"><button class="btn btn-outline btn-sm add-param" onclick="addParamRow(this)">➕ Add Parameter</button></div>
+        <div style="margin-top:10px;"><label style="font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;">About this test / Remark (prints on report)</label>
+        <textarea class="t-remark" rows="2" placeholder="Test information / method / interpretation...">${esc(remark)}</textarea></div>
+      </div>`;
+    }).join('') +
+    `<div class="card">
+      <label style="font-size:11px;font-weight:600;color:#4a5568;text-transform:uppercase;">Overall Impression / Clinical Note (prints on report)</label>
+      <textarea id="res-note" rows="2" placeholder="Overall interpretation / clinical note...">${esc(existing?.reportNote||'')}</textarea>
+      <div class="btn-group" style="margin-top:12px;">${reportActionsHTML(locked)}</div>
+    </div>`;
+  document.getElementById('res-verified').value=existing?.verified||'';
+  document.getElementById('res-date').value=existing?.date||new Date().toISOString().split('T')[0];
+  document.querySelectorAll('#res-entry-area .res-test-block .res-row:not(.res-header)').forEach(row=>evalRow(row.querySelector('.p-result')));
+  if(locked){
+    area.querySelectorAll('input,textarea').forEach(el=>el.readOnly=true);
+    area.querySelectorAll('.add-param,.res-del,.save-draft,.verify-btn').forEach(el=>el.style.display='none');
+  }
+  if(existing) showReportPreview(existing);
+  area.scrollIntoView({behavior:'smooth'});
+}
+
+function collectReport(){
+  const billNo=document.getElementById('res-bill').value;
+  const inv=invoices.find(i=>i.billNo===billNo);
+  document.querySelectorAll('#res-entry-area .p-result').forEach(evalRow);
+  const tests=[...document.querySelectorAll('.res-test-block')].map(block=>({
+    name:block.dataset.test,
+    cat:block.dataset.cat,
+    remark:(block.querySelector('.t-remark')?.value||'').trim(),
+    params:[...block.querySelectorAll('.res-row:not(.res-header)')].map(row=>({
+      name:row.querySelector('.p-name').value.trim(),
+      result:row.querySelector('.p-result').value.trim(),
+      unit:row.querySelector('.p-unit').value.trim(),
+      range:row.querySelector('.p-range').value.trim(),
+      flag:row.dataset.flag||''
+    })).filter(p=>p.name||p.result)
+  }));
+  return {billNo,patient:inv.patient,date:document.getElementById('res-date').value,
+    verified:document.getElementById('res-verified').value.trim(),
+    reportNote:(document.getElementById('res-note')?.value||'').trim(),tests};
+}
+
+function saveLabReport(status){
+  const billNo=document.getElementById('res-bill').value;
+  if(!billNo){notify('Select a bill','error');return null;}
+  const inv=invoices.find(i=>i.billNo===billNo);
+  if(!inv){notify('Bill not found','error');return null;}
+  const r=collectReport();
+  const prev=labReports[billNo]||{};
+  const nowIso=new Date().toISOString();
+  r.registeredAt=prev.registeredAt||nowIso;
+  r.collectedAt=prev.collectedAt||nowIso;
+  r.status=status||prev.status||'Draft';
+  if(r.status==='Verified'&&!r.verified){notify('Enter the verifying doctor name','error');return null;}
+  r.verifiedAt=prev.verifiedAt||(r.status!=='Draft'?new Date().toISOString():'');
+  if(r.status==='Printed') r.printedAt=new Date().toISOString();
+  r.savedAt=new Date().toISOString();
+  labReports[billNo]=r;
+  save('pcp_reports',labReports);
+  renderReportsList();
+  loadBillForReport();
+  return r;
+}
+
+function verifyReport(){
+  const name=document.getElementById('res-verified').value.trim();
+  if(!name){notify('Please enter the verifying doctor name','error');return;}
+  const r=saveLabReport('Verified');
+  if(r) notify('✅ Report verified by Dr. '+name);
+}
+
+function reopenReport(){
+  const r=saveLabReport('Draft');
+  if(r) notify('✏️ Report reopened as Draft');
+}
+
+function markPrinted(){
+  const sel=document.getElementById('res-bill').value;
+  const billNo=sel || (currentReport&&currentReport.billNo);
+  const r=billNo?labReports[billNo]:null;
+  if(!r) return;
+  r.status='Printed'; r.printedAt=new Date().toISOString(); r.savedAt=new Date().toISOString();
+  labReports[billNo]=r;
+  save('pcp_reports',labReports);
+  renderReportsList();
+  if(sel===billNo) loadBillForReport();
+}
+
+function buildReportHTML(r){
+  const s=settings;
+  const inv=invoices.find(i=>i.billNo===r.billNo);
+  const lab=s.labname||'PathoCare Diagnostics';
+  const refBy=(inv&&inv.doctor)?inv.doctor:'';
+  const reg=r.registeredAt||r.savedAt;
+  const col=r.collectedAt||reg;
+  const rep=r.verifiedAt||'';
+  const sampleId=r.billNo||r.patient.id||'';
+  const reportDate=rep?fmtDateTime(rep):'Pending';
+
+  const testsHTML=r.tests.map(t=>{
+    const rows=t.params.map(p=>{
+      const ab=(p.flag==='H'||p.flag==='L'||p.flag==='A');
+      const fl=p.flag==='H'?'High':p.flag==='L'?'Low':p.flag==='A'?'Abnormal':'';
+      const method=methodFor(p.name);
+      return `<tr>
+        <td><b>${p.name||''}</b>${method?`<div class="rp-method">${method}</div>`:''}</td>
+        <td class="rp-res"><span class="rp-val${ab?' '+(p.flag==='L'?'low':'high'):''}">${p.result||'-'}</span>${fl?`<span class="rp-flag">${fl}</span>`:''}</td>
+        <td>${p.unit||''}</td>
+        <td>${p.range||''}</td>
+      </tr>`;
+    }).join('');
+    const rec=recFor(t.name);
+    const recHTML=rec?`<table class="rp-rec"><tr><th rowspan="${rec.rows.length+1}">${rec.title}</th>${rec.cols.map(c=>`<th>${c}</th>`).join('')}</tr>${rec.rows.map(row=>`<tr>${row.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`:'';
+    const notes=notesFor(t.name);
+    const noteHTML=notes.length?`<div class="rp-note"><b>Clinical Significance :</b><ol>${notes.map(x=>`<li>${x}</li>`).join('')}</ol></div>`:'';
+    const remarkHTML=t.remark?`<div class="rp-note"><b>Note :</b> ${t.remark}</div>`:'';
+    return `<div class="rp-test-title">${t.name}</div>
+      <table class="rp-table"><thead><tr><th style="width:34%">Test Name</th><th style="width:18%;text-align:center">Result</th><th style="width:18%">Unit</th><th style="width:30%">Biological Reference Interval</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="4">No parameters</td></tr>'}</tbody></table>
+      ${recHTML}${noteHTML}${remarkHTML}`;
+  }).join('');
+
+  return `<div class="rpt-page">
+    <div class="rp-report-headline">${lab}</div>
+    <div class="rp-meta-grid">
+      <div class="rp-meta-left">
+        <div><b>Patient ID</b><span>: ${r.patient.id||'-'}</span></div>
+        <div><b>Patient Name</b><span>: ${r.patient.name||'-'}</span></div>
+        <div><b>Age</b><span>: ${r.patient.age||'-'} Yrs</span></div>
+        <div><b>Gender</b><span>: ${(r.patient.gender||'-').toUpperCase()}</span></div>
+        <div><b>Ref. By Doctor</b><span>: ${refBy||'-'}</span></div>
+        <div><b>Sample Collected At</b><span>: ${s.sampleAt||s.address||'-'}${s.city?' '+s.city:''}</span></div>
+      </div>
+      <div class="rp-meta-qr">
+        <div class="report-qr" data-report-id="${sampleId}" style="width:92px;height:92px;background:#fff;"></div>
+        <div class="rp-qr-caption">For Authenticity<br>Scan QR Code</div>
+      </div>
+      <div class="rp-meta-right">
+        <div><b>Registered On</b><span>: ${fmtDateTime(reg)}</span></div>
+        <div><b>Accessioned On</b><span>: ${fmtDateTime(col)}</span></div>
+        <div><b>Reported On</b><span>: ${reportDate}</span></div>
+        <div class="rp-sample-id"><b>Sample ID</b></div>
+        <div class="rp-barcode">${barcodeSVG(sampleId)}</div>
+      </div>
+    </div>
+    ${testsHTML}
+    ${r.reportNote?`<div class="rp-note rp-overall"><b>Clinical Significance :</b> ${r.reportNote}</div>`:''}
+    <div class="rp-end">------------------------------------------------ End of Report ------------------------------------------------</div>
+    <div class="rp-disclaimer">Results relate only to the sample as received. Kindly correlate with clinical condition.<br><b>Note :</b> If the test results are alarming or unexpected, Client is advised to contact the Physician immediately for possible remedial action.</div>
+    <div class="rp-footer">
+      <div><b>Sample Processed at ${lab}</b></div>
+      <div class="rp-footer-center">${s.reg?'Reg. No: '+s.reg:''}${s.gst?' | GSTIN: '+s.gst:''}</div>
+      <div class="rp-footer-right"><b>${s.pathologist1||'Pathologist'}</b><br>${s.pathologist1Qual||'Consultant Pathologist'}</div>
+    </div>
+    <div class="rp-genline"><span>This report is system generated and electronically authenticated.</span><span>Page 1 of 1</span></div>
+  </div>`;
+}
+
+function showReportPreview(r){
+  currentReport=r;
+  const reportEl=document.getElementById('report-content');
+  reportEl.innerHTML=buildReportHTML(r);
+  const inv=invoices.find(i=>i.billNo===r.billNo);
+  const qrEl=reportEl.querySelector('.report-qr');
+  if(qrEl) createReportQR(qrEl,r,inv,92);
+  document.getElementById('report-section').style.display='block';
+  document.getElementById('report-section').scrollIntoView({behavior:'smooth'});
+}
+
+async function printReport(){
+  const billNo=document.getElementById('res-bill')?.value || '';
+  const r=labReports[billNo]||currentReport;
+  if(!r){notify('No report loaded','error');return;}
+  if((r.status||'Draft')==='Draft'){notify('Please verify the report before printing','error');return;}
+
+  const inv=invoices.find(i=>i.billNo===r.billNo);
+  const qrData=await reportQRDataURL(r,inv,92).catch(()=>null);
+  let html=buildReportHTML(r);
+
+  // Put a real QR image into the print document so printing does not depend on
+  // an external QR-code library or network connection.
+  if(qrData){
+    html=html.replace(/<div class="report-qr"[^>]*><\/div>/,
+      `<img class="report-qr" src="${qrData}" style="width:92px;height:92px;display:block;background:#fff;" alt="Report QR Code">`);
+  }
+
+  const w=window.open('','_blank','width=900,height=1100');
+  if(!w){
+    notify('Please allow pop-ups for printing the report','error');
+    return;
+  }
+
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lab Report - ${String(r.billNo).replace(/</g,'&lt;')}</title>
+<style>
+html,body{margin:0;padding:0;background:#fff}
+body{font-family:'Segoe UI',Arial,sans-serif;color:#2d3748;padding:10mm;box-sizing:border-box}
+${REPORT_CSS}
+.rpt-page{width:100%;box-sizing:border-box;background:#fff!important;overflow:visible!important}
+@page{size:A4;margin:10mm}
+@media print{body{padding:0}.no-print{display:none!important}.rpt-page{box-shadow:none!important}}
+</style></head><body>${html}</body></html>`);
+  w.document.close();
+
+  // Wait for the print document to render before opening the system print dialog.
+  const doPrint=()=>{
+    try{
+      w.focus();
+      w.print();
+      setTimeout(()=>{try{w.close();}catch(e){}},1000);
+    }catch(e){
+      notify('Print failed. Please use Ctrl+P in the report window','error');
+    }
+    markPrinted();
+  };
+
+  if(w.document.readyState==='complete'){
+    setTimeout(doPrint,350);
+  }else{
+    w.onload=()=>setTimeout(doPrint,350);
+    setTimeout(()=>{if(!w.closed) doPrint();},1200);
+  }
+}
+async function downloadLabReportPDF(){
+  const billNo=document.getElementById('res-bill').value;
+  const r=labReports[billNo]||currentReport;
+  if(!r){notify('No report loaded','error');return;}
+  if((r.status||'Draft')==='Draft'){notify('Please verify the report before downloading','error');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const s=settings; const inv=invoices.find(i=>i.billNo===r.billNo); const pageW=210;
+  const qr=await reportQRDataURL(r,inv,92);
+  doc.setDrawColor(60); doc.rect(10,10,190,38);
+  doc.setFontSize(9); doc.setTextColor(30);
+  const left=[
+    ['Patient ID',r.patient.id||'-'],['Patient Name',r.patient.name||'-'],['Age',(r.patient.age||'-')+' Yrs'],
+    ['Gender',(r.patient.gender||'-').toUpperCase()],['Ref. By Doctor',inv&&inv.doctor?inv.doctor:'-'],
+    ['Sample Collected At',s.sampleAt||s.address||'-']
+  ];
+  let yy=15; left.forEach(([k,v])=>{doc.setFont('helvetica','bold');doc.text(k,13,yy);doc.setFont('helvetica','normal');doc.text(': '+String(v),40,yy);yy+=5.2;});
+  if(qr) doc.addImage(qr,'PNG',88,13,25,25);
+  doc.setFontSize(6.5);doc.text('For Authenticity',100.5,40,{align:'center'});doc.text('Scan QR Code',100.5,43,{align:'center'});
+  const rightX=116; yy=15;
+  [['Registered On',fmtDateTime(r.registeredAt||r.savedAt)],['Accessioned On',fmtDateTime(r.collectedAt||r.registeredAt||r.savedAt)],['Reported On',r.verifiedAt?fmtDateTime(r.verifiedAt):'Pending']].forEach(([k,v])=>{doc.setFont('helvetica','bold');doc.text(k,rightX,yy);doc.setFont('helvetica','normal');doc.text(': '+String(v),143,yy);yy+=5.2;});
+  doc.setFont('helvetica','bold');doc.text('Sample ID',rightX,31);doc.setFont('helvetica','normal');doc.text(': '+r.billNo,rightX+27,31);
+  doc.setFontSize(8);doc.text(r.billNo,178,43,{align:'center'});
+  doc.setDrawColor(80);doc.line(10,51,200,51);
+  let y=57;
+  for(const t of r.tests){
+    doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(String(t.name||'').toUpperCase(),pageW/2,y,{align:'center'}); y+=5;
+    const body=t.params.map(p=>[p.name||'',p.result||'-',p.unit||'',p.range||'']);
+    doc.autoTable({startY:y,head:[['Test Name','Result','Unit','Biological Reference Interval']],body,theme:'grid',styles:{fontSize:8,cellPadding:1.8,textColor:[30,30,30]},headStyles:{fillColor:[255,255,255],textColor:[30,30,30],fontStyle:'bold',lineColor:[60,60,60],lineWidth:.2},bodyStyles:{lineColor:[210,210,210],lineWidth:.15},columnStyles:{0:{cellWidth:62},1:{cellWidth:30},2:{cellWidth:25},3:{cellWidth:73}},margin:{left:10,right:10}});
+    y=doc.lastAutoTable.finalY+6;
+    const notes=notesFor(t.name);
+    if(notes.length){ if(y>255){doc.addPage();y=20;} doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Clinical Significance :',12,y);y+=4;doc.setFont('helvetica','normal');notes.forEach((n,i)=>{const lines=doc.splitTextToSize((i+1)+') '+n,184);doc.text(lines,12,y);y+=lines.length*3.5;});y+=2; }
+    if(t.remark){const lines=doc.splitTextToSize('Note : '+t.remark,184);doc.setFontSize(8);doc.text(lines,12,y);y+=lines.length*3.5+3;}
+  }
+  if(r.reportNote){if(y>260){doc.addPage();y=20;}doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Clinical Significance :',12,y);doc.setFont('helvetica','normal');const lines=doc.splitTextToSize(r.reportNote,184);doc.text(lines,12,y+4);y+=lines.length*3.5+8;}
+  if(y>265){doc.addPage();y=20;}
+  doc.setDrawColor(80);doc.rect(10,y,190,13);doc.setFontSize(7.5);doc.text('Results relate only to the sample as received. Kindly correlate with clinical condition.',105,y+5,{align:'center'});doc.text('Note : If the test results are alarming or unexpected, Client is advised to contact the Physician immediately for possible remedial action.',105,y+9,{align:'center'});
+  y+=19;doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Sample Processed at '+(s.labname||'Laboratory'),12,y);doc.text((s.pathologist1||'Pathologist'),174,y,{align:'center'});doc.setFont('helvetica','normal');doc.text(s.pathologist1Qual||'Consultant Pathologist',174,y+4,{align:'center'});doc.setFontSize(7);doc.text('This report is system generated and electronically authenticated.',12,289);doc.text('Page '+doc.internal.getNumberOfPages()+' of '+doc.internal.getNumberOfPages(),198,289,{align:'right'});
+  doc.save('Report_'+r.billNo+'.pdf'); notify('✅ Report PDF downloaded!'); markPrinted();
+}
+
+function whatsappReport(){
+  const r=currentReport;
+  if(!r){notify('No report loaded','error');return;}
+  const p=r.patient;
+  if(!p||!p.phone){notify('No phone number','error');return;}
+  const msg=`Dear ${p.name}, Your lab report (Bill: ${r.billNo}) is ready at ${settings.labname||'our lab'}. Please collect it. Thank you!`;
+  window.open('https://wa.me/91'+p.phone+'?text='+encodeURIComponent(msg));
+}
+
+function openResultEntry(billNo){
+  showPage('results');
+  setTimeout(()=>{document.getElementById('res-bill').value=billNo;loadBillForReport();},120);
+}
+
+function viewLabReport(billNo,doPrint){
+  const r=labReports[billNo];
+  if(!r)return;
+  currentReport=r;
+  showReportPreview(r);
+  if(doPrint) setTimeout(()=>printReport(),300);
+}
+
+function deleteLabReport(billNo){
+  if(!confirm('Delete report '+billNo+'?'))return;
+  delete labReports[billNo];
+  save('pcp_reports',labReports);
+  renderReportsList();
+  notify('Report deleted');
+}
+
+function clearResultEntry(){
+  document.getElementById('res-bill').value='';
+  document.getElementById('res-verified').value='';
+  document.getElementById('res-entry-area').style.display='none';
+  document.getElementById('res-entry-area').innerHTML='';
+  document.getElementById('report-section').style.display='none';
+}
+
+function renderReportsList(){
+  const el=document.getElementById('reports-list-table');
+  if(!el)return;
+  const list=Object.values(labReports).sort((a,b)=>String(b.savedAt||'').localeCompare(String(a.savedAt||'')));
+  el.innerHTML=list.map(r=>{
+    const st=r.status||'Draft';
+    const stClass=st==='Verified'?'status-verified':st==='Printed'?'status-printed':'status-draft';
+    return `<tr><td><b>${r.billNo}</b></td><td>${r.patient.name}</td>
+    <td>${new Date(r.date).toLocaleDateString('en-IN')}</td><td>${r.tests.length} test(s)</td>
+    <td>${r.verified?'Dr. '+r.verified:'-'}</td>
+    <td><span class="status-badge ${stClass}">${st.toUpperCase()}</span></td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-primary btn-sm" onclick="viewLabReport('${r.billNo}')">👁️</button>
+      <button class="btn btn-success btn-sm" onclick="viewLabReport('${r.billNo}',true)">🖨️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLabReport('${r.billNo}')">🗑️</button>
+    </td></tr>`;
+  }).join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:#718096;">No reports saved yet</td></tr>';
+}
+
+// ====== CLOUD (SUPABASE) ======
+function cloudCfg(){
+  const url=(settings.supabaseUrl||DEFAULT_CLOUD.url||'').trim().replace(/\/+$/,'');
+  const key=(settings.supabaseKey||DEFAULT_CLOUD.key||'').trim();
+  return {url,key};
+}
+function cloudReady(){ const c=cloudCfg(); return !!(c.url&&c.key); }
+function cloudSession(){
+  try{return JSON.parse(localStorage.getItem('pcp_cloud_session')||'null');}catch(e){return null;}
+}
+function setCloudSession(s){try{localStorage.setItem('pcp_cloud_session',JSON.stringify(s));}catch(e){} updateCloudBadge();}
+function clearCloudSession(){try{localStorage.removeItem('pcp_cloud_session');}catch(e){} updateCloudBadge();}
+async function cloudSignIn(email,password){
+  const c=cloudCfg();
+  const res=await fetch(c.url+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key},body:JSON.stringify({email,password})});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error_description||data.msg||('Sign-in failed ('+res.status+')'));
+  setCloudSession({access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Date.now()+((data.expires_in||3600)*1000),email});
+  return true;
+}
+async function cloudToken(){
+  const s=cloudSession(); if(!s)return null;
+  if(Date.now()<(s.expires_at||0)-60000)return s.access_token;
+  if(!s.refresh_token)return s.access_token;
+  const c=cloudCfg();
+  try{
+    const res=await fetch(c.url+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key},body:JSON.stringify({refresh_token:s.refresh_token})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)return s.access_token;
+    setCloudSession({access_token:data.access_token,refresh_token:data.refresh_token||s.refresh_token,expires_at:Date.now()+((data.expires_in||3600)*1000),email:s.email});
+    return data.access_token;
+  }catch(e){return s.access_token;}
+}
+async function cloudSaveData(key,val){
+  const tok=await cloudToken(); if(!tok) return false;
+  const c=cloudCfg();
+  const res=await fetch(c.url+'/rest/v1/lab_data?on_conflict=key',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+tok,'Prefer':'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({key,value:val,updated_at:new Date().toISOString()})});
+  if(!res.ok){console.warn('Cloud data save',key,res.status,await res.text().catch(()=>''));return false;}
+  return true;
+}
+async function cloudFetchData(){
+  const tok=await cloudToken(); if(!tok)throw new Error('Not signed in');
+  const c=cloudCfg();
+  const res=await fetch(c.url+'/rest/v1/lab_data?select=key,value',{headers:{'apikey':c.key,'Authorization':'Bearer '+tok}});
+  if(!res.ok)throw new Error('Data fetch failed ('+res.status+')');
+  return await res.json();
+}
+function applyCloudRow(key,val){
+  if(key==='pcp_settings'){
+    const local=settings||{};
+    settings=Object.assign({},local,val||{});
+    localStorage.setItem('pcp_settings',JSON.stringify(settings));
+  }else{
+    localStorage.setItem(key,JSON.stringify(val));
+  }
+}
+function reloadDataFromLocal(){
+  patients=JSON.parse(localStorage.getItem('pcp_patients')||'[]');
+  tests=JSON.parse(localStorage.getItem('pcp_tests')||'[]');
+  invoices=JSON.parse(localStorage.getItem('pcp_invoices')||'[]');
+  labReports=JSON.parse(localStorage.getItem('pcp_reports')||'{}');
+  bookings=JSON.parse(localStorage.getItem('pcp_bookings')||'[]');
+  patCounter=parseInt(localStorage.getItem('pcp_patcounter')||'1');
+  billCounter=parseInt(localStorage.getItem('pcp_billcounter')||'1000');
+  bkCounter=parseInt(localStorage.getItem('pcp_bkcounter')||'1');
+}
+async function cloudFetchBookings(){
+  const tok=await cloudToken(); if(!tok)throw new Error('Not signed in');
+  const c=cloudCfg();
+  const res=await fetch(c.url+'/rest/v1/bookings?select=*&order=created_at.desc',{headers:{'apikey':c.key,'Authorization':'Bearer '+tok}});
+  if(!res.ok)throw new Error('Bookings fetch failed ('+res.status+')');
+  return await res.json();
+}
+function rowToBooking(r){return {id:r.booking_code||r.id,name:r.name||'',age:r.age||'',gender:r.gender||'',phone:r.phone||'',email:r.email||'',address:r.address||'',notes:r.notes||'',doctor:r.doctor||'',collection:r.collection||'Lab Visit',date:r.preferred_date||'',slot:r.slot||'',tests:Array.isArray(r.tests)?r.tests:[],total:Number(r.total)||0,status:r.status||'Pending',created:r.created_at||new Date().toISOString(),billNo:r.bill_no||'',patientId:r.patient_id||'',cloud:true};}
+function mergeCloudBookings(rows){let added=0,updated=0;rows.forEach(r=>{const b=rowToBooking(r);const i=bookings.findIndex(x=>x.id===b.id);if(i>=0){bookings[i]=Object.assign({},bookings[i],b);updated++;}else{bookings.push(b);added++;}});localStorage.setItem('pcp_bookings',JSON.stringify(bookings));return {added,updated};}
+async function cloudUpdateBooking(code,patch){if(!cloudReady())return false;const tok=await cloudToken();if(!tok)return false;const c=cloudCfg();const res=await fetch(c.url+'/rest/v1/bookings?booking_code=eq.'+encodeURIComponent(code),{method:'PATCH',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'},body:JSON.stringify(patch)});return res.ok;}
+async function cloudDeleteBooking(code){if(!cloudReady())return false;const tok=await cloudToken();if(!tok)return false;const c=cloudCfg();const res=await fetch(c.url+'/rest/v1/bookings?booking_code=eq.'+encodeURIComponent(code),{method:'DELETE',headers:{'apikey':c.key,'Authorization':'Bearer '+tok,'Prefer':'return=minimal'}});return res.ok;}
+async function cloudInsertBooking(b){
+  if(!cloudReady())return false; const c=cloudCfg();
+  const body={booking_code:b.id,name:b.name,age:b.age||null,gender:b.gender||null,phone:b.phone,email:b.email||null,address:b.address||null,notes:b.notes||null,doctor:b.doctor||null,collection:b.collection||null,preferred_date:b.date||null,slot:b.slot||null,tests:b.tests||[],total:b.total||0,status:'Pending'};
+  const res=await fetch(c.url+'/rest/v1/bookings',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+c.key,'Prefer':'return=minimal'},body:JSON.stringify(body)}); return res.ok;
+}
+async function cloudTrack(code,phone){
+  if(!cloudReady())return null; const c=cloudCfg();
+  try{const res=await fetch(c.url+'/rest/v1/rpc/track_booking',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+c.key},body:JSON.stringify({p_code:code||null,p_phone:phone||null})});if(!res.ok)return null;const rows=await res.json();return Array.isArray(rows)&&rows.length?rowToBooking(rows[0]):null;}catch(e){return null;}
+}
+async function cloudPublicTests(){
+  if(!cloudReady())return null; const c=cloudCfg();
+  try{const res=await fetch(c.url+'/rest/v1/rpc/get_public_tests',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+c.key}});if(!res.ok)return null;const data=await res.json();return Array.isArray(data)?data:null;}catch(e){return null;}
+}
+async function cloudPublicReport(code,phone){
+  if(!cloudReady())return null; const c=cloudCfg();
+  try{const res=await fetch(c.url+'/rest/v1/rpc/get_patient_report',{method:'POST',headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+c.key},body:JSON.stringify({p_code:code,p_phone:phone})});if(!res.ok)return null;const rows=await res.json();return Array.isArray(rows)&&rows.length?(rows[0].result||rows[0]):null;}catch(e){return null;}
+}
+async function cloudSyncAll(silent){
+  if(!cloudReady()){if(!silent)notify('Pehle Supabase URL + Anon Key save karein','error');return false;}
+  if(!cloudSession()){if(!silent)notify('Pehle Cloud Sign In karein','error');return false;}
+  try{
+    const rows=await cloudFetchData(); const map={}; (rows||[]).forEach(r=>map[r.key]=r.value);
+    for(const key of CLOUD_DATA_KEYS){
+      if(Object.prototype.hasOwnProperty.call(map,key)) applyCloudRow(key,map[key]);
+      else if(localStorage.getItem(key)!==null) await cloudSaveData(key,cloudSanitizeValue(key,JSON.parse(localStorage.getItem(key))));
+    }
+    reloadDataFromLocal();
+    const bs=await cloudFetchBookings(); mergeCloudBookings(bs||[]);
+    renderPatients();renderTests();updateDoctorList();renderBookings();updateDashboard();
+    if(!silent)notify('☁️ Full database sync complete');
+    return true;
+  }catch(e){if(!silent)notify('❌ Cloud sync failed: '+e.message,'error');return false;}
+}
+function updateCloudBadge(){
+  const state=!cloudReady()?'off':(cloudSession()?'on':'anon');
+  const mk=el=>{if(!el)return;if(state==='off'){el.className='status-badge status-draft';el.textContent='CLOUD: OFF';}else if(state==='on'){el.className='status-badge status-verified';el.textContent='CLOUD: CONNECTED';}else{el.className='status-badge status-printed';el.textContent='CLOUD: READY';}};
+  mk(document.getElementById('cloud-badge'));mk(document.getElementById('bookings-cloud-badge'));
+  const h=document.getElementById('cloud-help'); if(h){h.innerHTML=!cloudReady()?'Setup: Supabase SQL setup run karein → URL + Publishable/Anon Key save karein → Cloud Sign In karein. Iske baad Patients, Tests, Bills, Reports aur Bookings sab devices par same rahenge.':(cloudSession()?'✅ Cloud connected. <b>Full Database Sync</b> dabane par poora data devices ke beech sync hoga.':'Cloud ready hai. Admin email/password se sign in karein.');}
+}
+async function cloudSignInUI(){
+  if(!cloudReady()){notify('Pehle Supabase URL + Key daalein aur Save karein','error');return;}
+  const email=(document.getElementById('s-supabaseEmail').value||'').trim(); const pass=(document.getElementById('supabasePass')||{}).value||'';
+  if(!email||!pass){notify('Admin email aur password daalein','error');return;}
+  notify('Cloud sign in ho raha hai...');
+  try{await cloudSignIn(email,pass);notify('✅ Cloud connected');await cloudSyncAll(true);updateCloudBadge();}catch(e){notify('❌ '+e.message,'error');}
+}
+function cloudSyncUI(){cloudSyncAll(false);}
+function cloudSignOutUI(){clearCloudSession();notify('Cloud se sign out ho gaya');}
+// ====== TRACK BOOKING (patient) ======
+function openTrack(){
+  const el=document.getElementById('track-screen');
+  if(!el) return;
+  el.style.display='flex';
+  document.body.classList.add('printing-track');
+  const ln=document.getElementById('trk-labname'); if(ln) ln.textContent=settings.labname||'Laboratory';
+  const ts=document.getElementById('trk-support');
+  if(ts){
+    const p=[];
+    if(settings.supportName)p.push('<b>'+settings.supportName+'</b>');
+    if(settings.supportPhone)p.push('📞 '+settings.supportPhone);
+    if(settings.supportEmail)p.push('✉️ '+settings.supportEmail);
+    ts.innerHTML=p.length?('<b>Need help?</b><br>'+p.join(' &nbsp;|&nbsp; ')):'';
+  }
+  document.getElementById('trk-result').innerHTML='';
+  const rc=document.getElementById('rpt-code'); if(rc) rc.value='';
+  const rp=document.getElementById('rpt-phone'); if(rp) rp.value='';
+  const rr=document.getElementById('patient-report-result'); if(rr) rr.innerHTML='';
+}
+function closeTrack(){ const el=document.getElementById('track-screen'); if(el) el.style.display='none'; document.body.classList.remove('printing-track'); }
+function normPhone(p){ return String(p||'').replace(/\D/g,'').slice(-10); }
+function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+async function cloudTrack(code,phone){
+  if(!cloudReady()) return null;
+  const c=cloudCfg();
+  try{
+    const res=await fetch(c.url+'/rest/v1/rpc/track_booking',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':c.key,'Authorization':'Bearer '+c.key},
+      body:JSON.stringify({p_code:code||null,p_phone:phone||null})
+    });
+    if(!res.ok) return null;
+    const rows=await res.json();
+    if(!Array.isArray(rows)||!rows.length) return null;
+    return rowToBooking(rows[0]);
+  }catch(e){ return null; }
+}
+
+async function trackBooking(){
+  const code=(document.getElementById('trk-code').value||'').trim().toUpperCase();
+  const phone=(document.getElementById('trk-phone').value||'').trim();
+  const box=document.getElementById('trk-result');
+  if(!phone && !code){ box.innerHTML='<div class="trk-alert err" style="margin-top:14px;">Booking ID ya Mobile Number daalein.</div>'; return; }
+  box.innerHTML='<div class="trk-alert warn" style="margin-top:14px;">🔎 Search kar rahe hain...</div>';
+  // set target for print/pdf buttons
+  window.__trkTarget=code||phone;
+  // 1) local (is device par booked)
+  let b=bookings.find(x=>{
+    const okCode=!code||String(x.id).toUpperCase()===code;
+    const okPhone=!phone||normPhone(x.phone)===normPhone(phone);
+    return okCode&&okPhone;
+  });
+  // 2) cloud (koi bhi device)
+  if(!b && cloudReady()){ b=await cloudTrack(code,phone); if(b) mergeCloudBookings([{booking_code:b.id,name:b.name,age:b.age,gender:b.gender,phone:b.phone,email:b.email,address:b.address,notes:b.notes,collection:b.collection,preferred_date:b.date,slot:b.slot,tests:b.tests,total:b.total,status:b.status,created_at:b.created}]); }
+  if(!b){
+    box.innerHTML='<div class="trk-alert err" style="margin-top:14px;">❌ Koi booking nahi mili.<br><small>Booking ID aur wahi mobile number daalein jo booking ke waqt diya tha. Ya support team se sampark karein.</small></div>';
+    return;
+  }
+  trackedBooking=b;
+  box.innerHTML=renderTrackResult(b);
+}
+
+function resolvePatientReport(billNo, booking, phone){
+  // First use the exact bill number. Then fall back to bookingId and patient phone/name.
+  if(billNo && labReports[billNo]) return labReports[billNo];
+  const candidates=Object.values(labReports||{}).filter(r=>r && r.billNo);
+  let r=candidates.find(x=>booking && String(x.billNo)===String(booking.billNo));
+  if(r) return r;
+  r=candidates.find(x=>booking && String(x.bookingId||'')===String(booking.id||''));
+  if(r) return r;
+  const nm=String(booking?.name||'').trim().toLowerCase();
+  return candidates.find(x=>x.patient && normPhone(x.patient.phone)===normPhone(phone) && String(x.patient.name||'').trim().toLowerCase()===nm) || null;
+}
+
+async function findPatientReport(){
+  const code=(document.getElementById('rpt-code').value||'').trim().toUpperCase();
+  const phone=(document.getElementById('rpt-phone').value||'').trim();
+  const box=document.getElementById('patient-report-result');
+  if(!code||!phone){ box.innerHTML='<div class="trk-alert err" style="margin-top:12px;">Booking ID और Mobile Number दोनों डालें.</div>'; return; }
+  box.innerHTML='<div class="trk-alert warn" style="margin-top:12px;">🔎 Report check कर रहे हैं...</div>';
+
+  let b=bookings.find(x=>String(x.id).toUpperCase()===code && normPhone(x.phone)===normPhone(phone));
+  if(!b && cloudReady()) b=await cloudTrack(code,phone);
+  if(!b){
+    box.innerHTML='<div class="trk-alert err" style="margin-top:12px;">❌ Booking नहीं मिली. Booking ID और वही mobile number डालें जो booking में दिया था.</div>'; return;
+  }
+
+  let inv=b.billNo ? invoices.find(i=>i.billNo===b.billNo) : null;
+  if(!inv) inv=[...invoices].reverse().find(i=>i.bookingId===b.id);
+  if(!inv) inv=[...invoices].reverse().find(i=>i.patient && normPhone(i.patient.phone)===normPhone(phone) && String(i.patient.name||'').trim().toLowerCase()===String(b.name||'').trim().toLowerCase());
+  let report=resolvePatientReport(inv?.billNo||b.billNo,b,phone);
+  if(!report && cloudReady()){
+    const cr=await cloudPublicReport(code,phone);
+    if(cr){report=cr.report||cr; if(cr.invoice){inv=cr.invoice;}}
+  }
+  if(!report || !['Verified','Printed'].includes(report.status)){
+    box.innerHTML='<div class="trk-alert warn" style="margin-top:12px;">⏳ आपका report अभी उपलब्ध नहीं है.<br><small>Administrator → Result Entry में report को <b>Verify</b> करें. Verify होने के बाद यहाँ Download button दिखाई देगा.</small></div>'; return;
+  }
+  box.innerHTML=`<div class="trk-card" style="margin-top:12px;">
+    <div class="trk-alert ok">✅ आपका report ready है.</div>
+    <div class="trk-row"><span class="k">Patient</span><span class="v">${esc(report.patient?.name||b.name)}</span></div>
+    <div class="trk-row"><span class="k">Report / Bill No.</span><span class="v">${esc(report.billNo)}</span></div>
+    <div class="trk-row"><span class="k">Status</span><span class="v"><span class="badge badge-success">${esc(report.status)}</span></span></div>
+    <div class="btn-group no-print" style="margin-top:12px;">
+      <button class="btn btn-primary" onclick="downloadPatientReport('${esc(report.billNo)}')">⬇️ Download Report PDF</button>
+      <button class="btn btn-success" onclick="printPatientReport('${esc(report.billNo)}')">🖨️ Print Report</button>
+    </div>
+  </div>`;
+}
+
+function patientReportByBill(billNo){ return labReports[billNo]||null; }
+
+// Patient download works directly from the public section; it does not depend on
+// the hidden Admin Result Entry dropdown being selected.
+async function downloadPatientReport(billNo){
+  const r=patientReportByBill(billNo);
+  if(!r){notify('Report not found','error');return;}
+  if(!['Verified','Printed'].includes(r.status)){notify('Report is not verified yet','error');return;}
+  currentReport=r;
+  try{
+    await generatePatientReportPDF(r);
+  }catch(e){
+    console.error(e);
+    notify('Report PDF नहीं बन पाया. कृपया फिर से कोशिश करें.','error');
+  }
+}
+
+async function generatePatientReportPDF(r){
+  if(!window.jspdf || !window.jspdf.jsPDF){throw new Error('PDF library not loaded');}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const s=settings||{};
+  const inv=invoices.find(i=>i.billNo===r.billNo)||null;
+  const pageW=210;
+  const qr=await reportQRDataURL(r,inv,92);
+  doc.setDrawColor(60); doc.rect(10,10,190,38);
+  doc.setFontSize(9); doc.setTextColor(30);
+  const left=[
+    ['Patient ID',r.patient?.id||'-'],['Patient Name',r.patient?.name||'-'],['Age',(r.patient?.age||'-')+' Yrs'],
+    ['Gender',(r.patient?.gender||'-').toUpperCase()],['Ref. By Doctor',inv&&inv.doctor?inv.doctor:'-'],
+    ['Sample Collected At',s.sampleAt||s.address||'-']
+  ];
+  let yy=15; left.forEach(([k,v])=>{doc.setFont('helvetica','bold');doc.text(String(k),13,yy);doc.setFont('helvetica','normal');doc.text(': '+String(v),40,yy);yy+=5.2;});
+  if(qr) doc.addImage(qr,'PNG',88,13,25,25);
+  doc.setFontSize(6.5);doc.text('For Authenticity',100.5,40,{align:'center'});doc.text('Scan QR Code',100.5,43,{align:'center'});
+  const rightX=116; yy=15;
+  [['Registered On',fmtDateTime(r.registeredAt||r.savedAt)],['Accessioned On',fmtDateTime(r.collectedAt||r.registeredAt||r.savedAt)],['Reported On',r.verifiedAt?fmtDateTime(r.verifiedAt):'Pending']].forEach(([k,v])=>{doc.setFont('helvetica','bold');doc.text(String(k),rightX,yy);doc.setFont('helvetica','normal');doc.text(': '+String(v),143,yy);yy+=5.2;});
+  doc.setFont('helvetica','bold');doc.text('Sample ID',rightX,31);doc.setFont('helvetica','normal');doc.text(': '+String(r.billNo||'-'),rightX+27,31);
+  doc.setFontSize(8);doc.text(String(r.billNo||'-'),178,43,{align:'center'});
+  doc.setDrawColor(80);doc.line(10,51,200,51);
+  let y=57;
+  for(const t of (r.tests||[])){
+    doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(String(t.name||'').toUpperCase(),pageW/2,y,{align:'center'}); y+=5;
+    const body=(t.params||[]).map(p=>[p.name||'',p.result||'-',p.unit||'',p.range||'']);
+    doc.autoTable({startY:y,head:[['Test Name','Result','Unit','Biological Reference Interval']],body,theme:'grid',styles:{fontSize:8,cellPadding:1.8,textColor:[30,30,30]},headStyles:{fillColor:[255,255,255],textColor:[30,30,30],fontStyle:'bold',lineColor:[60,60,60],lineWidth:.2},bodyStyles:{lineColor:[210,210,210],lineWidth:.15},columnStyles:{0:{cellWidth:62},1:{cellWidth:30},2:{cellWidth:25},3:{cellWidth:73}},margin:{left:10,right:10}});
+    y=doc.lastAutoTable.finalY+6;
+    const notes=notesFor(t.name);
+    if(notes.length){if(y>255){doc.addPage();y=20;}doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Clinical Significance :',12,y);y+=4;doc.setFont('helvetica','normal');notes.forEach((n,i)=>{const lines=doc.splitTextToSize((i+1)+') '+n,184);doc.text(lines,12,y);y+=lines.length*3.5;});y+=2;}
+    if(t.remark){const lines=doc.splitTextToSize('Note : '+t.remark,184);doc.setFontSize(8);doc.text(lines,12,y);y+=lines.length*3.5+3;}
+  }
+  if(r.reportNote){if(y>260){doc.addPage();y=20;}doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Clinical Significance :',12,y);doc.setFont('helvetica','normal');const lines=doc.splitTextToSize(r.reportNote,184);doc.text(lines,12,y+4);y+=lines.length*3.5+8;}
+  if(y>265){doc.addPage();y=20;}
+  doc.setDrawColor(80);doc.rect(10,y,190,13);doc.setFontSize(7.5);doc.text('Results relate only to the sample as received. Kindly correlate with clinical condition.',105,y+5,{align:'center'});doc.text('Note : If the test results are alarming or unexpected, Client is advised to contact the Physician immediately for possible remedial action.',105,y+9,{align:'center'});
+  y+=19;doc.setFontSize(8);doc.setFont('helvetica','bold');doc.text('Sample Processed at '+(s.labname||'Laboratory'),12,y);doc.text((s.pathologist1||'Pathologist'),174,y,{align:'center'});doc.setFont('helvetica','normal');doc.text(s.pathologist1Qual||'Consultant Pathologist',174,y+4,{align:'center'});doc.setFontSize(7);doc.text('This report is system generated and electronically authenticated.',12,289);doc.text('Page '+doc.internal.getNumberOfPages()+' of '+doc.internal.getNumberOfPages(),198,289,{align:'right'});
+  doc.save('Report_'+(r.billNo||'Patient')+'.pdf');
+  notify('✅ Report PDF downloaded!');
+}
+
+function printPatientReport(billNo){
+  const r=patientReportByBill(billNo);
+  if(!r){notify('Report not found','error');return;}
+  if(!['Verified','Printed'].includes(r.status)){notify('Report is not verified yet','error');return;}
+  currentReport=r;
+  const w=window.open('','_blank');
+  const inv=invoices.find(i=>i.billNo===r.billNo);
+  w.document.write(`<html><head><title>${r.billNo}</title><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><style>body{font-family:'Segoe UI',Arial,sans-serif;color:#2d3748;padding:16px;margin:0;} ${REPORT_CSS} @page{size:A4;margin:10mm}</style></head><body>${buildReportHTML(r)}<script>window.addEventListener('load',function(){var e=document.querySelector('.report-qr');if(e&&typeof QRCode!=='undefined'){new QRCode(e,{text:${JSON.stringify(reportQRText(r,inv))},width:92,height:92,colorDark:'#111111',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}setTimeout(function(){window.focus();window.print();},350);});<\/script></body></html>`);
+  w.document.close();
+}
+
+function renderTrackResult(b){
+  const steps=['Pending','Confirmed','Completed'];
+  const cancelled=b.status==='Cancelled';
+  const idx=steps.indexOf(b.status);
+  const stepper=steps.map((s,i)=>`<div class="trk-step ${(!cancelled&&i<=idx)?'done':''}"><div class="dot">${(!cancelled&&i<=idx)?'\u2713':(i+1)}</div>${s}</div>`).join('');
+  const sc=b.status==='Pending'?'badge-warning':b.status==='Confirmed'?'badge-info':b.status==='Completed'?'badge-success':'badge-danger';
+  const tests=(b.tests||[]).map(t=>`<li>${t.name} \u2014 \u20b9${Number(t.price||0).toFixed(2)}</li>`).join('');
+  let msg='';
+  if(cancelled) msg='<div class="trk-alert err">Yeh booking cancel kar di gayi hai.</div>';
+  else if(b.status==='Pending') msg='<div class="trk-alert warn">Aapki booking mil gayi hai. Hamari support team jaldi confirm karegi.</div>';
+  else if(b.status==='Confirmed') msg='<div class="trk-alert ok">✅ Booking confirm ho gayi! Nirdharit samay par sample collection ke liye taiyar rahein.</div>';
+  else msg='<div class="trk-alert ok">\ud83c\udf89 Aapka test complete ho gaya. Report jald hi mil jayegi.</div>';
+  return `
+    <div class="trk-card">
+      ${msg}
+      <div class="trk-row"><span class="k">Booking ID</span><span class="v">${b.id}</span></div>
+      <div class="trk-row"><span class="k">Status</span><span class="v"><span class="badge ${sc}">${b.status}</span></span></div>
+      <div class="trk-row"><span class="k">Patient</span><span class="v">${b.name}${b.age?' ('+b.age+'/'+(b.gender||'-')+')':''}</span></div>
+      <div class="trk-row"><span class="k">Collection</span><span class="v">${b.collection||'-'}</span></div>
+      <div class="trk-row"><span class="k">Date / Slot</span><span class="v">${b.date||'-'}${b.slot?' \u00b7 '+b.slot:''}</span></div>
+      <div class="trk-row"><span class="k">Booked on</span><span class="v">${b.created?new Date(b.created).toLocaleString('en-IN'):'-'}</span></div>
+      <div class="trk-steps">${cancelled?`<div class="trk-step cancel"><div class="dot">\u2715</div>Cancelled</div>`:stepper}</div>
+      ${tests?`<div style="margin-top:10px;"><div class="inv-section-label">Tests Booked</div><ul style="font-size:13px;padding-left:18px;color:#2d3748;">${tests}</ul></div>`:''}
+      <div class="trk-row" style="border-top:1px solid #e2e8f0;margin-top:6px;padding-top:10px;"><span class="k" style="font-weight:700;">Total</span><span class="v" style="font-size:16px;">\u20b9${Number(b.total||0).toFixed(2)}</span></div>
+      <div class="btn-group no-print" style="margin-top:12px;">
+        <button class="btn btn-success btn-sm" onclick="printBooking('${b.id}')">🖨️ Print Slip</button>
+        <button class="btn btn-primary btn-sm" onclick="downloadBookingPDF('${b.id}')">⬇️ Download PDF</button>
+      </div>
+    </div>`;
+}
+
+// ====== TRACK BOOKING — PRINT / PDF SLIP ======
+let trackedBooking=null;
+function findBooking(id){ return bookings.find(x=>x.id===id)||null; }
+
+function buildBookingSlipHTML(b){
+  const s=settings;
+  const lab=s.labname||'Laboratory';
+  const words=lab.trim().split(' ');
+  const labHtml=words.length>1?(words.slice(0,-1).join(' ')+' <span>'+words[words.length-1]+'</span>'):lab;
+  const st=b.status||'Pending';
+  const stc=st==='Pending'?'status-draft':st==='Confirmed'?'status-printed':st==='Completed'?'status-verified':'status-cancelled';
+  const steps=['Pending','Confirmed','Completed'];
+  const idx=steps.indexOf(st);
+  const cancelled=st==='Cancelled';
+  const dotSVG=(filled,txt)=>`<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="13" r="12" fill="${filled?'#38a169':'#e2e8f0'}"/><text x="13" y="18" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="bold" fill="${filled?'#ffffff':'#718096'}">${txt}</text></svg>`;
+  const dotCancel=`<svg width="26" height="26" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><circle cx="13" cy="13" r="12" fill="#e53e3e"/><text x="13" y="18" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="bold" fill="#ffffff">\u2715</text></svg>`;
+  let stepper='';
+  if(cancelled){
+    stepper='<table class="bkstbl"><tr><td class="cancel">'+dotCancel+'<div>Cancelled</div></td></tr></table>';
+  } else {
+    const cells=steps.map((x,i)=>{
+      const done=i<=idx;
+      const cell=`<td class="${done?'done':''}">${dotSVG(done,done?'\u2713':(i+1))}<div>${x}</div></td>`;
+      const line=(i<steps.length-1)?`<td class="bkl ${i<idx?'on':''}"><svg width="100%" height="4" viewBox="0 0 60 4" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="2" y="1" fill="${i<idx?'#38a169':'#e2e8f0'}"/></svg></td>`:'';
+      return cell+line;
+    }).join('');
+    stepper='<table class="bkstbl"><tr>'+cells+'</tr></table>';
+  }
+  const tests=(b.tests||[]).map((t,i)=>`<tr><td>${i+1}</td><td>${t.name}</td><td style="text-align:right">\u20b9${Number(t.price||0).toFixed(2)}</td></tr>`).join('')||'<tr><td colspan="3" style="color:#718096;">No tests</td></tr>';
+  const sup=[s.supportName,s.supportPhone?('\ud83d\udcf1 '+s.supportPhone):'',s.supportEmail?('\u2709\ufe0f '+s.supportEmail):''].filter(Boolean).join(' &nbsp;|&nbsp; ');
+  return `<div class="rpt-page">
+    <div class="rpt-wm">${lab}</div>
+    <div class="rp-head">
+      <div class="rp-head-left"><div class="rp-logo">✚</div>
+        <div><div class="rp-labname">${labHtml}</div><div class="rp-tagline">${s.tagline||''}</div></div></div>
+      <div class="rp-head-right">${s.phone?'<div>📞 '+s.phone+'</div>':''}${s.email?'<div>✉️ '+s.email+'</div>':''}</div>
+    </div>
+    <div class="rp-addr">${s.address||''}${s.city?(s.address?', ':'')+s.city:''}</div>
+    <div class="rp-stripe">${stripeBars()}<span class="rp-web">${s.website||''}</span></div>
+
+    <div class="bk-slip-title">BOOKING CONFIRMATION</div>
+    <div style="display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:8px;flex-wrap:wrap;">
+      <span class="status-badge ${stc}">${st.toUpperCase()}</span>
+      <div class="booking-qr" data-booking-id="${b.id}" style="width:92px;height:92px;background:#fff;"></div>
+      <div style="font-size:9.5px;color:#718096;text-align:left;"><b>SCAN TO VERIFY</b><br>Booking ID + Patient Name</div>
+    </div>
+
+    <table class="bk-detail">
+      <tr><td class="k">Booking ID</td><td class="v">${b.id}</td><td class="k">Booked On</td><td class="v">${b.created?new Date(b.created).toLocaleString('en-IN'):'-'}</td></tr>
+      <tr><td class="k">Patient Name</td><td class="v">${b.name||'-'}</td><td class="k">Mobile</td><td class="v">${b.phone||'-'}</td></tr>
+      <tr><td class="k">Doctor</td><td class="v">${b.doctor||'-'}</td><td class="k">Email</td><td class="v">${b.email||'-'}</td></tr>
+      <tr><td class="k">Age / Gender</td><td class="v">${(b.age||'-')+' / '+(b.gender||'-')}</td><td class="k">Collection</td><td class="v">${b.collection||'-'}</td></tr>
+      <tr><td class="k">Date</td><td class="v">${b.date||'-'}</td><td class="k">Time Slot</td><td class="v">${b.slot||'-'}</td></tr>
+      ${b.address?`<tr><td class="k">Address</td><td class="v" colspan="3">${b.address}</td></tr>`:''}
+      ${b.notes?`<tr><td class="k">Notes</td><td class="v" colspan="3">${b.notes}</td></tr>`:''}
+    </table>
+
+    <table class="rp-table"><thead><tr><th style="width:8%">#</th><th>Test Name</th><th style="width:22%;text-align:right">Amount</th></tr></thead>
+    <tbody>${tests}</tbody></table>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+      <table style="min-width:220px;">
+        <tr class="inv-grand"><td style="padding:7px 10px;font-weight:700;">TOTAL</td><td style="padding:7px 10px;text-align:right;font-weight:700;">\u20b9${Number(b.total||0).toFixed(2)}</td></tr>
+      </table>
+    </div>
+
+    <div style="margin-top:14px;font-size:11px;color:#718096;text-align:center;">Booking Progress</div>
+    ${stepper}
+
+    <div class="bk-slip-foot">
+      ${sup?('<b>Support:</b> '+sup+'<br>'):''}
+      Yeh ek computer generated booking slip hai. Sample collection ke samay ye slip saath laayein.<br>
+      <b>Generated on:</b> ${new Date().toLocaleString('en-IN')} &nbsp;|&nbsp; Page 1 of 1
+    </div>
+  </div>`;
+}
+
+function printBooking(id){
+  const b=findBooking(id)||trackedBooking;
+  if(!b){ notify('Booking nahi mili','error'); return; }
+  const w=window.open('','_blank');
+  w.document.write(`<html><head><title>Booking ${b.id}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\\/script>
+    <style>
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#2d3748;padding:16px;margin:0;}
+    ${REPORT_CSS}
+    @page{size:A4;margin:10mm}
+  </style></head><body>${buildBookingSlipHTML(b)}
+  <script>
+    window.addEventListener('load',function(){
+      document.querySelectorAll('.booking-qr').forEach(function(el){
+        el.innerHTML='';
+        new QRCode(el,{text:${JSON.stringify(bookingQRText(b))},width:92,height:92,colorDark:'#111111',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+      });
+      setTimeout(function(){window.focus();window.print();},300);
+    });
+  <\\/script></body></html>`);
+  w.document.close();
+}
+
+async function downloadBookingPDF(id){
+  const b=findBooking(id)||trackedBooking;
+  if(!b){ notify('Booking nahi mili','error'); return; }
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  const s=settings; const st=b.status||'Pending';
+  doc.setFontSize(16);doc.setTextColor(26,54,93);
+  doc.text(s.labname||'Laboratory',15,18);
+  doc.setFontSize(9);doc.setTextColor(100);
+  doc.text((s.address||'')+(s.phone?('   Ph: '+s.phone):''),15,24);
+  doc.setDrawColor(200);doc.line(15,29,195,29);
+  doc.setFontSize(13);doc.setTextColor(26,54,93);
+  doc.text('BOOKING CONFIRMATION',105,38,{align:'center'});
+  doc.setFontSize(10);doc.setTextColor(49,130,206);
+  doc.text('Status: '+st,105,45,{align:'center'});
+  doc.autoTable({
+    startY:52,
+    body:[
+      ['Booking ID',b.id,'Booked On',b.created?new Date(b.created).toLocaleString('en-IN'):'-'],
+      ['Patient Name',b.name||'-','Mobile',b.phone||'-'],
+      ['Age / Gender',(b.age||'-')+' / '+(b.gender||'-'),'Collection',b.collection||'-'],
+      ['Date',b.date||'-','Time Slot',b.slot||'-'],
+      ['Address',b.address||'-','Notes',b.notes||'-']
+    ],
+    theme:'grid',
+    styles:{fontSize:9,cellPadding:2.5},
+    columnStyles:{0:{fontStyle:'bold',fillColor:[247,250,252],cellWidth:28},2:{fontStyle:'bold',fillColor:[247,250,252],cellWidth:28}}
+  });
+  let y=doc.lastAutoTable.finalY+8;
+  doc.setFontSize(11);doc.setTextColor(26,54,93);
+  doc.text('Tests Booked',15,y); y+=4;
+  doc.autoTable({startY:y,head:[['#','Test Name','Amount']],
+    body:(b.tests||[]).map((t,i)=>[String(i+1),t.name,'\u20b9'+Number(t.price||0).toFixed(2)]),
+    headStyles:{fillColor:[26,54,93],fontSize:9},bodyStyles:{fontSize:9},
+    columnStyles:{0:{cellWidth:12},2:{cellWidth:30,halign:'right'}},margin:{left:15,right:15}});
+  y=doc.lastAutoTable.finalY+8;
+  const qrData=await bookingQRDataURL(b,96);
+  if(qrData){
+    doc.addImage(qrData,'PNG',157,y-4,38,38);
+    doc.setFontSize(7);doc.setTextColor(80);
+    doc.text('SCAN TO VERIFY',176,y+37,{align:'center'});
+    y+=42;
+  }
+  doc.setFontSize(12);doc.setTextColor(26,54,93);
+  doc.text('TOTAL: \u20b9'+Number(b.total||0).toFixed(2),195,y,{align:'right'});
+  y+=10;
+  const steps=['Pending','Confirmed','Completed'];
+  doc.setFontSize(9);doc.setTextColor(120);
+  doc.text('Progress:  '+(st==='Cancelled'?'CANCELLED':steps.map((x,i)=>i<=steps.indexOf(st)?('\u2713 '+x):('\u25cb '+x)).join('   \u2192   ')),15,y);
+  y+=12;
+  doc.setFontSize(8);doc.setTextColor(120);
+  const sup=[s.supportName,s.supportPhone?('Ph: '+s.supportPhone):'',s.supportEmail].filter(Boolean).join('  |  ');
+  if(sup) doc.text('Support: '+sup,105,y,{align:'center'}), y+=5;
+  doc.text('This is a computer generated booking slip. Please carry it at the time of sample collection.',105,y,{align:'center'}); y+=5;
+  doc.text('Generated on: '+new Date().toLocaleString('en-IN'),105,y,{align:'center'});
+  doc.save('Booking_'+b.id+'.pdf');
+  notify('✅ Booking slip PDF downloaded');
+}
+
+// ====== ONLINE BOOKING ======
+function openBooking(){
+  const el=document.getElementById('booking-screen');
+  if(!el)return;
+  el.style.display='flex';
+  document.getElementById('bk-date').value=new Date().toISOString().split('T')[0];
+  const ln=document.getElementById('bk-labname'); if(ln) ln.textContent=settings.labname||'Laboratory';
+  const tg=document.getElementById('bk-tagline'); if(tg) tg.textContent='Book your lab test online \u2014 '+(settings.labname||'');
+  renderBookingTests();
+  renderBookingSupport();
+  if(cloudReady()) cloudPublicTests().then(rows=>{ if(Array.isArray(rows)&&rows.length){ tests=rows; renderBookingTests(); } }).catch(()=>{});
+}
+function closeBooking(){ const el=document.getElementById('booking-screen'); if(el) el.style.display='none'; }
+function renderBookingSupport(){
+  const s=settings;
+  const parts=[];
+  if(s.supportName) parts.push('<b>'+s.supportName+'</b>');
+  if(s.supportPhone) parts.push('📞 '+s.supportPhone);
+  if(s.supportEmail) parts.push('✉️ '+s.supportEmail);
+  parts.push('🕒 Mon\u2013Sat, 7:00 AM \u2013 8:00 PM');
+  const el=document.getElementById('bk-support');
+  if(el) el.innerHTML='<b>Need help? Contact our Support Team</b><br>'+parts.join(' &nbsp;|&nbsp; ');
+}
+function renderBookingTests(){
+  const el=document.getElementById('bk-test-list');
+  if(!el)return;
+  const q=(document.getElementById('bk-test-search').value||'').toLowerCase();
+  const list=tests.filter(t=>t.status==='Active'&&(t.name.toLowerCase().includes(q)||t.cat.toLowerCase().includes(q)));
+  el.innerHTML=list.map(t=>`
+    <label class="bk-test ${bkSelected.includes(t.id)?'sel':''}">
+      <input type="checkbox" ${bkSelected.includes(t.id)?'checked':''} onchange="toggleBkTest(${t.id})">
+      <span class="bk-tinfo"><b>${t.name}</b><small>${t.cat} \u00b7 ${t.sample}</small></span>
+      <span class="bk-price">\u20b9${t.price}</span>
+    </label>`).join('')||'<p style="color:#718096;padding:8px;">No tests found</p>';
+  calcBkTotal();
+}
+function toggleBkTest(id){
+  const i=bkSelected.indexOf(id);
+  if(i>=0) bkSelected.splice(i,1); else bkSelected.push(id);
+  renderBookingTests();
+}
+function calcBkTotal(){
+  const total=tests.filter(t=>bkSelected.includes(t.id)).reduce((s,t)=>s+t.price,0);
+  const el=document.getElementById('bk-total'); if(el) el.textContent='\u20b9'+total.toFixed(2);
+  return total;
+}
+function bookingPayload(){
+  return {
+    name:(document.getElementById('bk-name').value||'').trim(),
+    age:(document.getElementById('bk-age').value||'').trim(),
+    gender:document.getElementById('bk-gender').value,
+    phone:(document.getElementById('bk-phone').value||'').trim(),
+    email:(document.getElementById('bk-email').value||'').trim(),
+    doctor:(document.getElementById('bk-doctor').value||'').trim(),
+    address:(document.getElementById('bk-address').value||'').trim(),
+    notes:(document.getElementById('bk-notes').value||'').trim(),
+    collection:document.getElementById('bk-collection').value,
+    date:document.getElementById('bk-date').value,
+    slot:document.getElementById('bk-slot').value,
+    tests:tests.filter(t=>bkSelected.includes(t.id)).map(t=>({id:t.id,name:t.name,price:t.price})),
+    total:calcBkTotal()
+  };
+}
+function validateBooking(b){
+  if(!b.name||!b.phone){notify('Name and Mobile number are required','error');return false;}
+  if(!b.tests.length){notify('Please select at least one test','error');return false;}
+  return true;
+}
+function submitBooking(){
+  const b=bookingPayload();
+  if(!validateBooking(b))return;
+  b.id=genBookingCode();
+  b.status='Pending';
+  b.created=new Date().toISOString();
+  bookings.push(b);
+  save('pcp_bookings',bookings);
+  // cloud me bhejo (agar configured hai) - public booking ke liye
+  if(cloudReady()){ cloudInsertBooking(b).then(ok=>{ if(!ok) console.warn('Cloud insert failed'); }).catch(()=>{}); }
+  clearBookingForm();
+  notify('\u2705 Booking '+b.id+' submitted! Our support team will call you shortly.');
+  renderBookings();
+  closeBooking();
+  setTimeout(()=>alert('Booking Confirmed!\n\nBooking ID: '+b.id+'\nPatient: '+b.name+'\nTests: '+b.tests.length+'\nTotal: \u20b9'+b.total.toFixed(2)+'\n\nWe will contact you on '+b.phone+'.'),200);
+}
+function bookOnWhatsApp(){
+  const b=bookingPayload();
+  if(!validateBooking(b))return;
+  const num=(settings.bookingWhatsapp||settings.supportPhone||settings.phone||'').replace(/\D/g,'');
+  if(!num){notify('Booking WhatsApp number not set. Settings me daalein.','error');return;}
+  const lines=[
+    '*NEW TEST BOOKING*','',
+    'Name: '+b.name, b.age?('Age: '+b.age):'', b.gender?('Gender: '+b.gender):'',
+    'Mobile: '+b.phone, b.doctor?('Doctor: '+b.doctor):'', b.email?('Email: '+b.email):'',
+    'Collection: '+b.collection,
+    'Date: '+b.date+'  Slot: '+b.slot,
+    b.address?('Address: '+b.address):'',
+    b.notes?('Notes: '+b.notes):'','',
+    '*Tests:*', ...b.tests.map(t=>'\u2022 '+t.name+' \u2014 \u20b9'+t.price),'',
+    '*Total: \u20b9'+b.total.toFixed(2)+'*'
+  ].filter(x=>x!=='').join('\n');
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(lines));
+}
+function clearBookingForm(){
+  const bd=document.getElementById('bk-doctor'); if(bd) bd.value='';
+  ['bk-name','bk-age','bk-phone','bk-email','bk-address','bk-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('bk-gender').value='';
+  bkSelected=[];
+  renderBookingTests();
+}
+function renderBookings(){
+  const el=document.getElementById('bookings-table');
+  if(!el)return;
+  const q=(document.getElementById('booking-search')?.value||'').toLowerCase();
+  const sf=document.getElementById('booking-status-filter')?.value||'';
+  const list=[...bookings].reverse().filter(b=>(b.id.toLowerCase().includes(q)||b.name.toLowerCase().includes(q)||b.phone.includes(q))&&(!sf||b.status===sf));
+  el.innerHTML=list.map(b=>{
+    const sc=b.status==='Pending'?'badge-warning':b.status==='Confirmed'?'badge-info':b.status==='Completed'?'badge-success':'badge-danger';
+    return `<tr><td><b>${b.id}</b><br><small style="color:#718096;">${new Date(b.created).toLocaleDateString('en-IN')}</small></td>
+    <td>${b.name}<br><small style="color:#718096;">${b.age||'-'}/${b.gender||'-'}</small></td>
+    <td>${b.phone}</td>
+    <td>${b.tests.map(t=>t.name).join(', ')}</td>
+    <td><b>\u20b9${b.total.toFixed(2)}</b></td>
+    <td>${b.collection}</td>
+    <td>${b.date||'-'}<br><small style="color:#718096;">${b.slot||''}</small></td>
+    <td><span class="badge ${sc}">${b.status}</span></td>
+    <td style="white-space:nowrap">
+      <button class="btn btn-success btn-sm" onclick="convertBooking('${b.id}')" title="Create Patient + Bill">\u2795</button>
+      <button class="btn btn-warning btn-sm" onclick="setBookingStatus('${b.id}','Confirmed')" title="Confirm">\u2714\ufe0f</button>
+      <button class="btn btn-teal btn-sm" onclick="bookingWhatsApp('${b.id}')" title="WhatsApp">\ud83d\udcf1</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteBooking('${b.id}')" title="Delete">\ud83d\uddd1\ufe0f</button>
+    </td></tr>`;
+  }).join('')||'<tr><td colspan="9" style="text-align:center;padding:25px;color:#718096;">No bookings yet</td></tr>';
+}
+function setBookingStatus(id,status){
+  const b=bookings.find(x=>x.id===id); if(!b)return;
+  b.status=status; save('pcp_bookings',bookings); renderBookings(); notify('Booking '+id+' \u2192 '+status);
+  if(cloudReady()&&cloudSession()) cloudUpdateBooking(id,{status}).catch(()=>{});
+}
+function deleteBooking(id){
+  if(!confirm('Delete booking '+id+'?'))return;
+  bookings=bookings.filter(x=>x.id!==id); save('pcp_bookings',bookings); renderBookings(); notify('Booking deleted');
+  if(cloudReady()&&cloudSession()) cloudDeleteBooking(id).catch(()=>{});
+}
+function bookingWhatsApp(id){
+  const b=bookings.find(x=>x.id===id); if(!b)return;
+  const num=b.phone.replace(/\D/g,'');
+  const msg='Dear '+b.name+', your test booking '+b.id+' at '+(settings.labname||'our lab')+' is '+b.status+'. Tests: '+b.tests.map(t=>t.name).join(', ')+'. Total: \u20b9'+b.total.toFixed(2)+'. '+(b.date?('Scheduled: '+b.date+' '+b.slot):'');
+  window.open('https://wa.me/91'+num+'?text='+encodeURIComponent(msg));
+}
+function convertBooking(id){
+  const b=bookings.find(x=>x.id===id); if(!b)return;
+  if(!confirm('Convert booking '+id+' into a Patient + Bill?'))return;
+  const p={id:'PT'+String(patCounter).padStart(4,'0'),name:b.name,age:b.age,gender:b.gender,blood:'',phone:b.phone,email:b.email,doctor:b.doctor||'',address:b.address,date:new Date().toLocaleDateString('en-IN')};
+  patients.push(p); patCounter++;
+  save('pcp_patients',patients); save('pcp_patcounter',patCounter);
+  b.status='Confirmed'; b.patientId=p.id; save('pcp_bookings',bookings); if(cloudReady()&&cloudSession()) cloudUpdateBooking(id,{status:'Confirmed',patient_id:p.id}).catch(()=>{});
+  pendingBookingId=id;
+  renderPatients(); renderBookings(); updateDoctorList();
+  showPage('billing');
+  setTimeout(()=>{
+    document.getElementById('b-patient').value=p.id;
+    fillPatientDetails();
+    billTests=b.tests.map(t=>{const tt=tests.find(x=>x.id===t.id); return tt?{...tt,qty:1}:null;}).filter(Boolean);
+    renderBillTests();
+    notify('Patient + booked tests loaded into billing');
+  },200);
+}
+
+// ====== INIT ======
+document.head.insertAdjacentHTML('beforeend','<style>'+REPORT_CSS+'</style>');
+renderPatients(); renderTests(); updateDoctorList();
+document.getElementById('lab-name-sidebar').textContent=settings.labname||'Lab Billing System';
+const _ln=document.getElementById('login-labname'); if(_ln) _ln.textContent=settings.labname||'Laboratory';
+renderSupport();
+updateCloudBadge();
+</script>
+</body>
+</html>
